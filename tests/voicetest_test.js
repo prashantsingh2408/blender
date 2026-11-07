@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
     window.webkitSpeechRecognition = window.SpeechRecognition = function () { const r = this; window.__rec = r; r.start = () => setTimeout(() => r.onresult && r.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: 'aage badho' }], { isFinal: true })] }), 800); r.stop = () => { r.onend && r.onend(); }; }; });
   await page.route(/fonts\.g|unpkg|peerjs/, r => r.abort());
   await page.goto('file://' + process.cwd() + '/contra.html'); await page.waitForTimeout(600);
-  await page.click('#cfgBtn'); await page.click('#vt_spk'); await page.waitForTimeout(300);
+  await page.click('#cfgBtn'); await page.click('#stabs button[data-tab=controls]'); await page.click('#vt_spk'); await page.waitForTimeout(300);
   const spk = await page.textContent('#vtLines');
   await page.click('#vt_mic'); await page.waitForTimeout(7000);
   const mic = await page.textContent('#vtLines');

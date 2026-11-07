@@ -66,6 +66,11 @@
   #settings h2{margin:0 0 10px;font-size:18px;color:#ffd866}
   #settings label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:9px 0}
   #settings select,#settings input[type=range]{min-width:150px;padding:5px;background:#0d1117;color:#fff;border:1px solid #3a4652;border-radius:6px}
+  body.nopet #petcv{display:none !important}
+  #stabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  #stabs button{flex:1;min-width:64px;padding:9px 6px;border-radius:8px;border:1px solid #3a4652;background:#1f2a36;color:#cfd8e0;font-weight:bold;font-size:13px;cursor:pointer}
+  #stabs button.cur{background:#f59e0b;color:#0f172a;border-color:#f59e0b}
+  #settings section{display:none} #settings section.cur{display:block}
   #settings .hint{color:#8fa3b5;font-size:12px;margin:4px 0 12px}
   #settings .row{display:flex;gap:8px;margin-top:14px}
   #settings .char{display:flex;gap:14px;align-items:flex-start;margin:6px 0 10px}
@@ -105,7 +110,9 @@
 <div id="top"><button id="lifeBtn" title="Unlimited lives">&#8734;</button><button id="gunBtn" title="Switch weapon">&#x1F52B;</button><button id="fsBtn" title="Fullscreen">&#x26F6;</button><button id="cfgBtn" title="Settings">&#9881;</button></div>
 <div id="arsenal"><div class="box"><h2>Choose weapon</h2><div id="wtabs" class="row"></div><div id="wlist"></div><div id="tune" style="margin-top:12px;padding:10px 12px;border:1px solid #3a4652;border-radius:10px;background:#0d1117"><b id="tuneName" style="color:#ffd866"></b><div class="prow"><span style="width:62px">Speed</span><input type="range" id="t_spd" min="50" max="250" step="10"><b id="t_spdv" style="width:44px;text-align:right"></b></div><div class="prow"><span style="width:62px">Damage</span><input type="range" id="t_dmg" min="50" max="400" step="10"><b id="t_dmgv" style="width:44px;text-align:right"></b></div><div class="prow"><span style="width:62px">Blast</span><input type="range" id="t_spl" min="50" max="300" step="10"><b id="t_splv" style="width:44px;text-align:right"></b></div><div class="prow"><span style="width:62px">Reload</span><input type="range" id="t_cd" min="10" max="200" step="10"><b id="t_cdv" style="width:44px;text-align:right"></b></div><div class="prow"><span style="width:62px">Gravity</span><input type="range" id="t_gr" min="0" max="200" step="10"><b id="t_grv" style="width:44px;text-align:right"></b></div><div class="row" style="margin-top:8px"><button id="t_reset">Reset this weapon</button><button id="t_resetAll">Reset all weapons</button></div></div><div class="prow"><span>Arc power</span><input type="range" id="a_power" min="20" max="100" step="5"><b id="a_pv"></b></div><div class="prow"><span>Mode</span><select id="a_mode"><option value="hold">Hold fire to charge</option><option value="fixed">Fixed power (slider)</option></select></div><div class="hint" style="color:#8fa3b5;font-size:12px;margin:6px 0">Applies to Mortar, Grenade and every Pocket Tanks shell. Keys: [ and ] change power, T swaps weapon set.</div><div class="row"><button id="w_close">Close</button></div></div></div>
 <div id="settings"><div class="box">
-  <h2>Character</h2>
+  <h2 style="margin:0 0 8px">Settings</h2>
+  <div id="stabs"><button data-tab="char" class="cur">Character</button><button data-tab="controls">Controls</button><button data-tab="gameplay">Gameplay</button><button data-tab="weapons">Weapons</button><button data-tab="world">World</button></div>
+  <section data-tab="char" class="cur">
   <div class="char"><canvas id="facePrev" width="96" height="96"></canvas><div>
     <label>Face<select id="o_face"><option value="vector">Vector (drawn)</option><option value="photo">My photo</option></select></label>
     <input type="file" id="faceFile" accept="image/*" capture="user" style="display:none">
@@ -121,11 +128,8 @@
   <label>Shirt<input type="color" id="o_shirt"></label>
   <label>Trousers<input type="color" id="o_pants"></label>
   <label>Bandana colour<input type="color" id="o_band"></label>
-  <h2 style="margin-top:14px">World</h2>
-  <label>Level<select id="o_level"><option value="jungle">Jungle (wall boss)</option><option value="desert">Desert ruins (head boss)</option><option value="snow">Snow base (head boss)</option><option value="night">Night fortress (head boss)</option><option value="road">Iron road (tank boss)</option><option value="skies">Storm skies (gunship boss)</option><option value="plane">Plane ride (balloons, sky)</option><option value="random">Random world each game</option></select></label>
-  <div class="hint">Changing the level starts a new world the next time you press start.</div>
-  <label>Lives<select id="o_lives"><option value="0">3 lives</option><option value="1">Unlimited (explore)</option></select></label>
-  <h2 style="margin-top:14px">Controls &amp; settings</h2>
+  </section>
+  <section data-tab="controls">
   <label>Touch stick area<select id="o_zone"><option value="bottom">Bottom of screen</option><option value="top">Top of screen</option><option value="full">Anywhere (full height)</option></select></label>
   <div class="hint">Where your thumbs can land to summon the two sticks. Choose Top if they cover the action.</div>
   <label>Movement (touch)<select id="o_move"><option value="twin">Twin-stick (floating, two thumbs)</option><option value="auto">Auto-run + STOP / BACK buttons</option><option value="stick">Joystick (left / right / down)</option><option value="minimal">Minimal: tap = jump, hold = stop</option></select></label>
@@ -133,17 +137,36 @@
   <label>Aim &amp; fire (touch)<select id="o_aim"><option value="stick">AIM + FIRE stick</option><option value="touch">Touch the game screen</option></select></label>
   <div class="hint">Touch mode: press anywhere on the game to aim at that point and fire; drag to track.</div>
   <label>Hold to auto-fire<select id="o_hold"><option value="1">On</option><option value="0">Off (tap to fire)</option></select></label>
-  <label>Arc power (mortar, grenade, tank shells)<select id="o_chargeMode"><option value="hold">Hold fire to charge</option><option value="fixed">Fixed power (slider)</option></select></label>
-  <label>Fixed power<input type="range" id="o_power" min="20" max="100" step="5"></label>
   <label>Laser sight<select id="o_laser"><option value="1">On</option><option value="0">Off</option></select></label>
-  <label>Run speed<select id="o_speed"><option value="60">Slow</option><option value="80">Normal</option><option value="100">Fast</option></select></label>
   <label>Button size<select id="o_size"><option value="0.8">Small</option><option value="1">Medium</option><option value="1.25">Large</option></select></label>
-  <label>Background<select id="o_bg"><option value="auto">Level default</option><option value="live">Live (wind, clouds, birds)</option><option value="storm">Storm (rain + lightning)</option><option value="night">Night (stars + fireflies)</option><option value="static">Static</option></select></label>
-  <label>Extra sky on tall screens<select id="o_tall"><option value="1">On (more game space)</option><option value="0">Off (classic 256&times;224)</option></select></label>
   <h2 style="margin-top:14px">Voice test</h2>
   <div class="hint">Check that the phone hears you. Tap, allow the microphone, then say something like &ldquo;aage badho&rdquo; or &ldquo;fire&rdquo;.</div>
   <div class="row"><button id="vt_mic">&#127908; Test microphone</button><button id="vt_spk">&#128266; Test speaker</button></div>
   <div id="vtOut" style="margin:8px 0 4px;font-size:13px;line-height:1.5;color:#cfd8e0"><div style="height:8px;border-radius:4px;background:#26323f;overflow:hidden"><div id="vtBar" style="height:100%;width:0;background:#4ade80"></div></div><div id="vtLines"></div></div>
+  </section>
+  <section data-tab="gameplay">
+  <label>Lives<select id="o_lives"><option value="0">3 lives</option><option value="1">Unlimited (explore)</option></select></label>
+  <label>Run speed<select id="o_speed"><option value="60">Slow</option><option value="80">Normal</option><option value="100">Fast</option></select></label>
+  <label>Sheru the dog<select id="o_pet"><option value="1">On (follows and helps)</option><option value="0">Off (no dog)</option></select></label>
+  <div class="hint">Switch the dog on or off any time. Voice: &ldquo;Sheru, go home&rdquo; / &ldquo;Sheru, come&rdquo;.</div>
+  </section>
+  <section data-tab="weapons">
+  <label>Arc power (mortar, grenade, tank shells)<select id="o_chargeMode"><option value="hold">Hold fire to charge</option><option value="fixed">Fixed power (slider)</option></select></label>
+  <label>Fixed power<input type="range" id="o_power" min="20" max="100" step="5"></label>
+  <label>Weapon in hand<select id="s_gun"></select></label>
+  <div class="hint">Pick any gun, blade or buster. It is in your hand straight away while playing.</div>
+  <div class="row"><button id="s_arsenal">Open weapon menu</button></div>
+  </section>
+  <section data-tab="world">
+  <label>Level<select id="o_level"><option value="jungle">Jungle (wall boss)</option><option value="desert">Desert ruins (head boss)</option><option value="snow">Snow base (head boss)</option><option value="night">Night fortress (head boss)</option><option value="road">Iron road (tank boss)</option><option value="skies">Storm skies (gunship boss)</option><option value="plane">Plane ride (balloons, sky)</option><option value="random">Random world each game</option></select></label>
+  <div class="hint">Changing the level starts a new world the next time you press start.</div>
+  <label>Background<select id="o_bg"><option value="auto">Level default</option><option value="live">Live (wind, clouds, birds)</option><option value="storm">Storm (rain + lightning)</option><option value="night">Night (stars + fireflies)</option><option value="static">Static</option></select></label>
+  <label>Extra sky on tall screens<select id="o_tall"><option value="1">On (more game space)</option><option value="0">Off (classic 256&times;224)</option></select></label>
+  <h2 style="margin-top:14px">Director: jump to</h2>
+  <div class="hint">Moves the commando right now. Start a game first.</div>
+  <div class="row"><button class="dj" data-k="start">&#9198; Start</button><button class="dj" data-k="next">&#9197; Next enemy</button></div>
+  <div class="row" style="margin-top:6px"><button class="dj" data-k="turret">Turret / cannon</button><button class="dj" data-k="boss">&#128128; Boss</button></div>
+  </section>
   <div class="row" id="installRow" style="display:none"><button id="installBtn">&#11015; Install as an app</button></div>
   <div class="row"><button id="o_reset">Reset defaults</button><button id="o_close">Done</button></div>
 </div></div>
@@ -232,7 +255,7 @@ addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (!k) return; e.pre
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 // ---- settings (persisted) --------------------------------------------------
-const DEF_CFG = { move: 'twin', aim: 'touch', hold: 1, laser: 1, speed: 80, size: 1, tall: 1, bg: 'auto', level: 'jungle', lives: 0, chargeMode: 'hold', power: 75, tune: {}, zone: 'bottom', hero: 'commando', face: 'vector', hairStyle: 'quiff', hair: '#1a1512', skin: '#c58a62', beard: 'stubble', bandana: 1, shirt: '#c6392b', pants: '#2b4fd6', band: '#e01818', v: 3 };
+const DEF_CFG = { move: 'twin', aim: 'touch', hold: 1, laser: 1, speed: 80, size: 1, tall: 1, bg: 'auto', level: 'jungle', lives: 0, chargeMode: 'hold', power: 75, tune: {}, zone: 'bottom', pet: 1, hero: 'commando', face: 'vector', hairStyle: 'quiff', hair: '#1a1512', skin: '#c58a62', beard: 'stubble', bandana: 1, shirt: '#c6392b', pants: '#2b4fd6', band: '#e01818', v: 3 };
 let cfg = { ...DEF_CFG };
 try { const sv = JSON.parse(localStorage.getItem('jc_cfg') || '{}'); if (sv.v !== 3) { delete sv.aim; } Object.assign(cfg, sv); cfg.v = 3; if (!cfg.tune || typeof cfg.tune !== 'object') cfg.tune = {}; } catch (e) {}
 const HEROES = {
@@ -265,6 +288,7 @@ $('faceFile').addEventListener('change', e => { const f = e.target.files[0]; if 
   x.drawImage(im, sx, sy, m, m, 0, 0, 64, 64); const url = c.toDataURL('image/jpeg', 0.82); try { localStorage.setItem('jc_face', url); } catch (e) {} faceImg.src = url; cfg.face = 'photo'; applyCfg(); }; im.src = rd.result; }; rd.readAsDataURL(f); e.target.value = ''; });
 var lastHero = null;
 function applyCfg() {
+  document.body.classList.toggle('nopet', !cfg.pet);
   autoRun = isTouch && (cfg.move === 'auto' || cfg.move === 'minimal');
   document.documentElement.style.setProperty('--bs', cfg.size);
   $('stop').style.display = $('back').style.display = cfg.move === 'auto' ? 'flex' : 'none';
@@ -330,6 +354,37 @@ function applyCfg() {
     }
     setTimeout(finish, 6000);
   });
+})();
+
+// ---- Settings: tabs, director jumps, weapon in hand ----
+(function () {
+  const show = t => { document.querySelectorAll('#stabs button').forEach(b => b.classList.toggle('cur', b.dataset.tab === t)); document.querySelectorAll('#settings section').forEach(s => s.classList.toggle('cur', s.dataset.tab === t)); try { localStorage.setItem('jc_tab', t); } catch (e) {} if (t === 'weapons') fillGunPick(); };
+  document.querySelectorAll('#stabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+  window.showSettingsTab = show;
+  function fillGunPick() {
+    const sel = $('s_gun'); if (!sel) return; sel.innerHTML = '';
+    for (const [set, lab] of [['soldier', 'Soldier'], ['tank', 'Pocket Tanks'], ['mega', 'Mega Man']]) { const og = document.createElement('optgroup'); og.label = lab; for (const k of SETS[set]) { const o = document.createElement('option'); o.value = k; o.textContent = WEAPONS[k].name; og.appendChild(o); } sel.appendChild(og); }
+    if (player && WEAPONS[player.gun]) sel.value = player.gun;
+  }
+  $('s_gun').addEventListener('change', e => { if (player && WEAPONS[e.target.value]) { player.gun = e.target.value; player.charging = false; worldToast('Weapon: ' + WEAPONS[player.gun].name); } });
+  $('s_arsenal').addEventListener('click', () => { $('settings').style.display = 'none'; G.paused = false; openArsenal(); });
+  function jumpTo(kind) {
+    if (!(G.state === 'play' && player && !player.dead)) return worldToast('Start the game first');
+    if (LV.type === 'ride') return worldToast('Not in the plane ride');
+    const alive = enemies.filter(e => !e.dead && e.t !== 'cap').sort((a, b) => a.x - b.x);
+    let x = 40, label = 'Start';
+    if (kind === 'next') { const e = alive.find(e => e.x > player.x + 40); if (!e) return worldToast('No enemy ahead'); x = e.x - 90; label = 'Next enemy'; }
+    else if (kind === 'turret') { const e = alive.find(e => (e.t === 'turret' || e.t === 'cannon') && e.x > player.x + 40) || alive.find(e => e.t === 'turret' || e.t === 'cannon'); if (!e) return worldToast('No turret left'); x = e.x - 90; label = 'Turret'; }
+    else if (kind === 'boss') { const e = alive.find(e => e.boss); if (!e) return worldToast('No boss here'); x = e.x - 120; label = 'Boss'; }
+    x = Math.max(24, x);
+    const s = surfaces.filter(s => !s.thin && x >= s.x1 + 6 && x <= s.x2 - 6)[0] || surfaces.filter(s => x >= s.x1 && x <= s.x2).sort((a, b) => b.y - a.y)[0];
+    cam = Math.max(0, Math.min(CAM_MAX, x - 100));
+    Object.assign(player, { x: Math.max(cam + 12, x), y: s ? s.y : GROUND, vx: 0, vy: 0, onGround: true, jumping: false, inv: 1.5 });
+    while (spawnI < spawns.length && spawns[spawnI].at < cam + VW) spawnI++;
+    pBullets = []; eBullets = []; $('settings').style.display = 'none'; G.paused = false; worldToast('Jumped: ' + label);
+  }
+  document.querySelectorAll('.dj').forEach(b => b.addEventListener('click', () => jumpTo(b.dataset.k)));
+  $('cfgBtn').addEventListener('click', () => { let t = 'char'; try { t = localStorage.getItem('jc_tab') || 'char'; } catch (e) {} show(t); });
 })();
 for (const k in DEF_CFG) { const el = $('o_' + k); if (el) el.addEventListener('change', e => { const v = e.target.value; cfg[k] = (el.type === 'color' || isNaN(+v)) ? v : +v; applyCfg(); }); }
 $('o_reset').addEventListener('click', () => { cfg = { ...DEF_CFG }; applyCfg(); });
@@ -1648,7 +1703,7 @@ function frame(now) {
   render(); requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__game = { get LV() { return LV; }, rebuildWorld, G, get player() { return player; }, get cam() { return cam; }, get enemies() { return enemies; }, get pBullets() { return pBullets; }, get eBullets() { return eBullets; }, get surfaces() { return surfaces; }, get VW() { return VW; }, get EXTRA() { return EXTRA; }, get canvas() { return cv; }, killEnemy, startBossDeath, addScore, keys, set aim(a) { aimOverride = a; }, get aim() { return aimOverride; }, WEAPONS, get curSet() { return SETS[setOf(player ? player.gun : "N")]; }, setGun(k) { if (WEAPONS[k] && player) { player.gun = k; player.charging = false; return true; } return false; } };
+window.__game = { get cfg() { return cfg; }, get LV() { return LV; }, rebuildWorld, G, get player() { return player; }, get cam() { return cam; }, get enemies() { return enemies; }, get pBullets() { return pBullets; }, get eBullets() { return eBullets; }, get surfaces() { return surfaces; }, get VW() { return VW; }, get EXTRA() { return EXTRA; }, get canvas() { return cv; }, killEnemy, startBossDeath, addScore, keys, set aim(a) { aimOverride = a; }, get aim() { return aimOverride; }, WEAPONS, get curSet() { return SETS[setOf(player ? player.gun : "N")]; }, setGun(k) { if (WEAPONS[k] && player) { player.gun = k; player.charging = false; return true; } return false; } };
 try { drawFacePreview(); } catch (e) {}
 </script>
 <script src="land.js"></script><script src="talk.js" data-game="contra"></script><script src="agent.js" data-game="contra"></script><script src="pet.js"></script></body>

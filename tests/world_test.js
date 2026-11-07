@@ -7,7 +7,7 @@ const { chromium, devices } = require('playwright');
   await page.keyboard.press('Enter'); await page.waitForTimeout(600);
   await page.evaluate(() => { __game.G.score = 777; });
   const before = await page.evaluate(() => ({ t: LV && LV.title }));
-  await page.click('#cfgBtn'); await page.selectOption('#o_level', 'snow'); await page.click('#o_close'); await page.waitForTimeout(500);
+  await page.click('#cfgBtn'); await page.click('#stabs button[data-tab=world]'); await page.selectOption('#o_level', 'snow'); await page.click('#o_close'); await page.waitForTimeout(500);
   const after = await page.evaluate(() => ({ t: LV.title, score: __game.G.score, state: __game.G.state, en: __game.enemies.length, cam: __game.cam }));
   console.log(JSON.stringify({ before, after, errs }));
   const ok = after.t === 'SNOW BASE' && after.score === 777 && after.state === 'play' && !errs.length;

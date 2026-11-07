@@ -42,7 +42,7 @@
   function tick(dt) {
     var W = G(); if (!W || !W.G || !W.player) return;
     var p = W.player, play = W.G.state === 'play' || W.G.state === 'bossdie';
-    if (!play || (W.LV && W.LV.type === 'ride')) { D.alive = false; return; }
+    if (!play || (W.cfg && W.cfg.pet === 0) || (W.LV && W.LV.type === 'ride')) { D.alive = false; return; }
     if (!D.alive) { D.alive = true; D.x = p.x - 24; D.y = p.y; D.vx = 0; D.vy = 0; D.onGround = true; D.mode = D.mode === 'stay' ? 'follow' : D.mode; }
     if (p.dead) { if (D.mode !== 'stay') { D.mode = 'follow'; } }
     /* decide where to go */
