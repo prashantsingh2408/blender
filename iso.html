@@ -182,4 +182,4 @@ function drawHints() { if (S.over) return; const opts = [...ADJ.get(key(...S.p))
 let last = performance.now();
 (function loop(now) { tAnim += (now - last) / 280; last = now; render(); drawHints(); requestAnimationFrame(loop); })(last);
 window.__iso = { get S() { return S; }, step, solve, initState, move, reset };
-</script></body></html>
+</script><script src="talk.js" data-game="iso"></script></body></html>

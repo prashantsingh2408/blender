@@ -185,4 +185,4 @@ function render(tnow) {
 }
 (function loop(t) { if (mode) { readInput(); if (mode === 'host' && sim) { /* host input set in tick */ } } render(t); requestAnimationFrame(loop); })(0);
 window.__arena = { get sim() { return sim; }, get snap() { return snap; }, get mode() { return mode; }, get myId() { return myId; }, inp };
-</script></body></html>
+</script><script src="talk.js" data-game="arena"></script></body></html>
