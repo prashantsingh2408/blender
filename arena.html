@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Jetpack Arena - Multiplayer</title><meta name="theme-color" content="#1b2a3a">
+<style>
+html,body{margin:0;height:100%;background:#12202e;overflow:hidden;font-family:system-ui,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none;color:#fff}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,18,28,.82);z-index:5}
+#card{width:min(92vw,380px);background:#1d2e41;border:1px solid #3a5470;border-radius:18px;padding:20px;box-shadow:0 10px 40px #000a}
+#card h1{margin:0 0 4px;font-size:26px;letter-spacing:.04em}#card p{margin:0 0 14px;color:#9db4cc;font-size:13px}
+input{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #3a5470;background:#0f1a27;color:#fff;font:600 16px system-ui;margin-bottom:10px}
+button.b{width:100%;padding:13px;margin-top:8px;border:0;border-radius:12px;font:800 15px system-ui;color:#10202e;background:#ffd24a}
+button.b.alt{background:#4ac0ff}button.b.dim{background:#33506b;color:#fff}
+.row{display:flex;gap:8px}.row input{margin:0}.row button{width:auto;margin:0;padding:0 16px}
+#st{margin-top:10px;font-size:12px;color:#8fe0a0;min-height:16px}
+#top{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;padding:calc(8px + env(safe-area-inset-top)) 10px 0;pointer-events:none;font-size:12px;font-weight:700}
+#top a{pointer-events:auto;color:#fff;text-decoration:none;background:rgba(0,0,0,.45);padding:7px 12px;border-radius:14px}
+#sb{background:rgba(0,0,0,.45);padding:6px 10px;border-radius:10px;min-width:110px;line-height:1.5}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="top"><a href="./">&#9664; GAME</a><div id="sb"></div></div>
+<div id="menu"><div id="card">
+<h1>JETPACK ARENA</h1><p>Online deathmatch. Fly, shoot, respawn. Up to 8 players.</p>
+<input id="name" maxlength="12" placeholder="Your name" autocomplete="off">
+<button class="b" id="solo">PLAY NOW (vs bots)</button>
+<button class="b alt" id="host">HOST ONLINE ROOM</button>
+<div class="row" style="margin-top:8px"><input id="code" maxlength="4" placeholder="ROOM CODE" style="text-transform:uppercase"><button class="b dim" id="join">JOIN</button></div>
+<div id="st"></div></div></div>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" onerror="window.__nopeer=1"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id), cv = $('c'), g = cv.getContext('2d');
+// ================= SIMULATION (host-authoritative) =================
+const WW = 1800, WH = 900, GRAV = 1100, MAXP = 8;
+const PLAT = [ // x,y,w (top surface y), thickness 28 ; the floor is first
+  [0, 820, 1800], [150, 650, 300], [650, 560, 260], [1050, 650, 300], [1350, 480, 300], [80, 430, 240], [520, 330, 240], [880, 400, 220], [1200, 260, 260], [700, 700, 200]
+];
+const SPAWNS = [[200, 600], [780, 500], [1180, 600], [1450, 420], [200, 380], [640, 270], [1300, 200], [900, 330]];
+class Sim {
+  constructor() { this.p = {}; this.b = []; this.t = 0; this.nid = 1; this.ev = []; }
+  add(id, name, bot) { const sp = SPAWNS[Math.floor(Math.random() * SPAWNS.length)]; this.p[id] = { id, name, bot: !!bot, x: sp[0], y: sp[1], vx: 0, vy: 0, hp: 100, fuel: 1, ang: 0, dir: 1, k: 0, d: 0, dead: 0, cd: 0, in: { l: 0, r: 0, u: 0, f: 0, a: 0 }, hit: 0 }; }
+  remove(id) { delete this.p[id]; }
+  spawn(p) { const sp = SPAWNS[Math.floor(Math.random() * SPAWNS.length)]; p.x = sp[0]; p.y = sp[1]; p.vx = p.vy = 0; p.hp = 100; p.fuel = 1; p.dead = 0; }
+  bot(p, dt) {
+    let tg = null, bd = 1e9; for (const o of Object.values(this.p)) if (o !== p && !o.dead) { const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < bd) { bd = d; tg = o; } }
+    const i = p.in; i.l = i.r = i.u = i.f = 0; if (!tg) return;
+    const dx = tg.x - p.x, dy = tg.y - p.y; p.aimNoise = (p.aimNoise || 0) + (Math.random() - .5) * dt * 3; p.aimNoise = Math.max(-.2, Math.min(.2, p.aimNoise));
+    i.a = Math.atan2(dy, dx) + p.aimNoise;
+    if (Math.abs(dx) > 260) { if (dx > 0) i.r = 1; else i.l = 1; } else if (Math.abs(dx) < 120) { if (dx > 0) i.l = 1; else i.r = 1; }
+    if (dy < -40 || p.y > WH - 60) i.u = 1; if (p.y < tg.y - 120 && p.vy > 0) i.u = 0;
+    i.f = bd < 650 && Math.random() < .85 ? 1 : 0;
+  }
+  step(dt) {
+    this.t += dt;
+    for (const p of Object.values(this.p)) {
+      if (p.bot) this.bot(p, dt);
+      if (p.dead) { p.dead -= dt; if (p.dead <= 0) this.spawn(p); continue; }
+      const i = p.in, mv = (i.r ? 1 : 0) - (i.l ? 1 : 0);
+      const on = p.on; p.vx += mv * (on ? 2400 : 1500) * dt; p.vx *= on ? Math.pow(.0005, dt) : Math.pow(.25, dt); p.vx = Math.max(-300, Math.min(300, p.vx));
+      if (mv) p.dir = mv; p.ang = i.a; if (Math.abs(Math.cos(i.a)) > .2) p.dir = Math.cos(i.a) > 0 ? 1 : -1;
+      if (i.u && p.fuel > 0) { p.vy -= 2200 * dt; if (p.vy < -340) p.vy = -340; p.fuel = Math.max(0, p.fuel - .45 * dt); p.jet = 1; } else { p.jet = 0; if (on) p.fuel = Math.min(1, p.fuel + .9 * dt); else p.fuel = Math.min(1, p.fuel + .08 * dt); }
+      p.vy += GRAV * dt; if (p.vy > 700) p.vy = 700;
+      const oy = p.y; p.x += p.vx * dt; p.y += p.vy * dt; p.x = Math.max(14, Math.min(WW - 14, p.x)); if (p.y < 20) { p.y = 20; p.vy = 0; }
+      p.on = false; if (p.vy >= 0) for (const [px, py, pw] of PLAT) if (p.x > px - 6 && p.x < px + pw + 6 && oy <= py + 1 && p.y >= py) { p.y = py; p.vy = 0; p.on = true; break; }
+      p.cd -= dt; if (p.hit > 0) p.hit -= dt;
+      if (i.f && p.cd <= 0) { p.cd = .13; const a = i.a + (Math.random() - .5) * .06; this.b.push({ id: this.nid++, o: p.id, x: p.x + Math.cos(a) * 22, y: p.y - 26 + Math.sin(a) * 22, vx: Math.cos(a) * 780 + p.vx * .3, vy: Math.sin(a) * 780, life: 1.1 }); }
+    }
+    for (const b of this.b) {
+      b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt; if (b.x < 0 || b.x > WW || b.y > WH + 100 || b.y < -200) b.life = 0;
+      for (const [px, py, pw] of PLAT) if (b.x > px && b.x < px + pw && b.y > py && b.y < py + 26) b.life = 0;
+      if (b.life > 0) for (const p of Object.values(this.p)) if (p.id !== b.o && !p.dead && Math.abs(b.x - p.x) < 15 && b.y > p.y - 52 && b.y < p.y + 2) {
+        b.life = 0; p.hp -= 14; p.hit = .15; if (p.hp <= 0) { p.dead = 2.5; p.d++; const k = this.p[b.o]; if (k) k.k++; this.ev.push([k ? k.name : '?', p.name]); }
+        break;
+      }
+    }
+    this.b = this.b.filter(b => b.life > 0);
+  }
+  snap() { return { t: this.t, p: Object.values(this.p).map(p => [p.id, p.name, Math.round(p.x), Math.round(p.y), Math.round(p.vx), Math.round(p.vy), p.hp, +p.fuel.toFixed(2), +p.ang.toFixed(2), p.dir, p.k, p.d, +p.dead.toFixed(1), p.jet | 0, p.hit > 0 ? 1 : 0, p.bot ? 1 : 0, p.cd > .06 ? 1 : 0]), b: this.b.map(b => [Math.round(b.x), Math.round(b.y), Math.round(b.vx), Math.round(b.vy)]), ev: this.ev.splice(0) }; }
+}
+// ================= TRANSPORT =================
+function BCTransport() { // same-origin tabs, used for local testing (#bc)
+  return {
+    host(code, onConn) { const ch = new BroadcastChannel('arena-' + code); const conns = {};
+      ch.onmessage = e => { const m = e.data; if (m.to !== 'host') return; if (m.hello) { const c = { id: m.from, send: o => ch.postMessage({ to: m.from, msg: JSON.parse(JSON.stringify(o)) }), onData: null, onClose: null }; conns[m.from] = c; onConn(c); } else if (conns[m.from] && conns[m.from].onData) conns[m.from].onData(m.msg); }; return { ready: Promise.resolve() }; },
+    join(code) { const ch = new BroadcastChannel('arena-' + code), me = 'c' + Math.random().toString(36).slice(2, 8); const c = { send: o => ch.postMessage({ to: 'host', from: me, msg: JSON.parse(JSON.stringify(o)) }), onData: null };
+      ch.onmessage = e => { if (e.data.to === me && c.onData) c.onData(e.data.msg); }; return new Promise((res, rej) => { ch.postMessage({ to: 'host', from: me, hello: 1 }); setTimeout(() => res(c), 150); }); }
+  };
+}
+function PeerTransport() {
+  return {
+    host(code, onConn) { return new Promise((res, rej) => { const peer = new Peer('jcarena-' + code); peer.on('open', () => res()); peer.on('error', rej);
+      peer.on('connection', pc => { const c = { id: pc.peer, send: o => { try { pc.send(o); } catch (e) {} }, onData: null }; pc.on('open', () => onConn(c)); pc.on('data', d => c.onData && c.onData(d)); pc.on('close', () => c.onClose && c.onClose()); }); }); },
+    join(code) { return new Promise((res, rej) => { const peer = new Peer(); peer.on('error', rej); peer.on('open', () => { const pc = peer.connect('jcarena-' + code, { reliable: false }); const c = { send: o => { try { pc.send(o); } catch (e) {} }, onData: null, onClose: null }; pc.on('open', () => res(c)); pc.on('data', d => c.onData && c.onData(d)); pc.on('close', () => c.onClose && c.onClose()); setTimeout(() => rej(new Error('Room not found')), 9000); }); }); }
+  };
+}
+// ================= GAME STATE =================
+let mode = null, sim = null, myId = null, myName = 'Player', snap = null, snapT = 0, roomCode = '', conns = {}, view = {}, kills = [], inp = { l: 0, r: 0, u: 0, f: 0, a: 0 }, keys = {}, mouse = { x: 0, y: 0, down: false }, cam = { x: 900, y: 450 }, ping = 0;
+const transport = () => location.hash.includes('bc') || window.__nopeer || typeof Peer === 'undefined' ? BCTransport() : PeerTransport();
+const st = t => $('st').textContent = t;
+$('name').value = (() => { try { return localStorage.getItem('ja_name') || ''; } catch (e) { return ''; } })();
+function getName() { const n = ($('name').value || '').trim() || 'Agent' + Math.floor(Math.random() * 90 + 10); try { localStorage.setItem('ja_name', n); } catch (e) {} return n; }
+const addBots = n => { for (let i = 0; i < n; i++) sim.add('bot' + i, ['Rex', 'Viper', 'Nova', 'Blaze', 'Echo', 'Jinx'][i % 6], true); };
+function startHost(withNet) {
+  myName = getName(); sim = new Sim(); myId = 'host'; mode = 'host'; sim.add(myId, myName); $('menu').style.display = 'none';
+  if (!withNet) addBots(3);
+  let acc = 0, accS = 0, last = performance.now();
+  setInterval(() => { const now = performance.now(), dt = Math.min(.05, (now - last) / 1000); last = now; sim.p[myId].in = inp;
+    // fill with bots when fewer than 2 humans present in net rooms
+    sim.step(dt); accS += dt; if (accS > .045) { accS = 0; const s = sim.snap(); s.ping = 0; snapPush(s); for (const c of Object.values(conns)) c.send({ k: 'snap', s }); } }, 16);
+}
+function snapPush(s) { snap = s; snapT = performance.now(); s.ev.forEach(e => kills.unshift([e[0] + ' > ' + e[1], performance.now()])); kills = kills.slice(0, 4); }
+async function hostRoom() {
+  st('Creating room...'); const code = Math.random().toString(36).slice(2, 6).toUpperCase(); roomCode = code;
+  try { await transport().host(code, c => { const id = c.id || 'c' + Math.random(); c.onData = m => { if (m.k === 'join') { if (Object.keys(sim.p).filter(k => !sim.p[k].bot).length >= MAXP) return; Object.keys(sim.p).filter(k => sim.p[k].bot).slice(0, 1).forEach(k => sim.remove(k)); sim.add(id, String(m.name).slice(0, 12)); conns[id] = c; c.send({ k: 'hi', id }); } else if (m.k === 'in' && sim.p[id]) sim.p[id].in = m.i; else if (m.k === 'ping') c.send({ k: 'pong', t: m.t }); }; c.onClose = () => { sim.remove(id); delete conns[id]; }; }); }
+  catch (e) { st('Could not create room (' + (e.type || e.message) + '). Check connection.'); return; }
+  startHost(true); addBots(1); $('top').querySelector('#sb').dataset.room = code;
+}
+async function joinRoom() {
+  const code = $('code').value.trim().toUpperCase(); if (code.length < 4) { st('Enter the 4-letter room code'); return; }
+  st('Connecting...'); roomCode = code; myName = getName();
+  try { const c = await transport().join(code); mode = 'client'; c.send({ k: 'join', name: myName }); c.onData = m => { if (m.k === 'hi') { myId = m.id; } else if (m.k === 'snap') snapPush(m.s); else if (m.k === 'pong') ping = Math.round(performance.now() - m.t); };
+    c.onClose = () => { mode = null; $('menu').style.display = 'flex'; st('Host left the room'); };
+    $('menu').style.display = 'none'; setInterval(() => c.send({ k: 'in', i: inp }), 33); setInterval(() => c.send({ k: 'ping', t: performance.now() }), 2000); }
+  catch (e) { st(e.message || 'Could not join'); }
+}
+$('solo').onclick = () => startHost(false); $('host').onclick = hostRoom; $('join').onclick = joinRoom;
+// ================= INPUT =================
+let sticks = { L: null, R: null };
+const touchUI = { L: null, R: null };
+addEventListener('keydown', e => { keys[e.key.toLowerCase()] = 1; }); addEventListener('keyup', e => { keys[e.key.toLowerCase()] = 0; });
+cv.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; }); cv.addEventListener('mousedown', e => { if (e.pointerType !== 'touch') mouse.down = true; }); addEventListener('mouseup', () => mouse.down = false);
+cv.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; cv.setPointerCapture(e.pointerId); const side = e.clientX < innerWidth / 2 ? 'L' : 'R'; sticks[side] = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; });
+cv.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') return; for (const s of ['L', 'R']) { const k = sticks[s]; if (k && k.id === e.pointerId) { k.dx = e.clientX - k.x; k.dy = e.clientY - k.y; const m = Math.hypot(k.dx, k.dy); if (m > 60) { k.x += k.dx / m * (m - 60); k.y += k.dy / m * (m - 60); k.dx = e.clientX - k.x; k.dy = e.clientY - k.y; } } } });
+const up = e => { for (const s of ['L', 'R']) if (sticks[s] && sticks[s].id === e.pointerId) sticks[s] = null; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+function readInput() {
+  const me = snap && snap.p.find(p => p[0] === myId); const sc = scale(); let ax = 0, ay = 0;
+  inp.l = keys.a || keys.arrowleft ? 1 : 0; inp.r = keys.d || keys.arrowright ? 1 : 0; inp.u = keys.w || keys.arrowup || keys[' '] ? 1 : 0; inp.f = mouse.down ? 1 : 0;
+  if (me && !sticks.R) { const mx = (mouse.x - innerWidth / 2) / sc + cam.x, my = (mouse.y - innerHeight / 2) / sc + cam.y; inp.a = Math.atan2(my - (me[3] - 26), mx - me[2]); }
+  const L = sticks.L, R = sticks.R;
+  if (L) { if (L.dx > 14) inp.r = 1; if (L.dx < -14) inp.l = 1; if (L.dy < -18) inp.u = 1; }
+  if (R) { const m = Math.hypot(R.dx, R.dy); if (m > 12) { inp.a = Math.atan2(R.dy, R.dx); inp.f = m > 28 ? 1 : 0; } }
+}
+// ================= RENDER =================
+const scale = () => Math.max(.4, Math.min(1.3, innerHeight / 560));
+function fit() { const d = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * d; cv.height = innerHeight * d; g.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener('resize', fit); fit();
+function soldier(p, x, y, tnow) {
+  const dir = p[9], a = p[8], dead = p[12] > 0, jet = p[13];
+  g.save(); g.translate(x, y); if (dead) { g.globalAlpha = .35; }
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(0, 2, 16, 4, 0, 0, 7); g.fill();
+  const col = p[15] ? '#c06030' : (p[0] === myId ? '#3a8fd8' : '#4f9a4a');
+  if (jet) { const f = 14 + Math.random() * 10; const gr = g.createLinearGradient(0, -18, 0, -18 + f + 10); gr.addColorStop(0, '#fff6a0'); gr.addColorStop(.5, '#ff9a30'); gr.addColorStop(1, 'rgba(255,60,0,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(-dir * 11, -16); g.lineTo(-dir * 7, -16); g.lineTo(-dir * 9, -4 + f); g.closePath(); g.fill(); }
+  g.fillStyle = '#555c66'; g.fillRect(-dir * 14 - 3, -36, 6, 18); // jetpack
+  const lg = Math.sin(tnow * 12 + p[0].length) * (jet || Math.abs(p[4]) < 8 ? 2 : 5) * (p[4] ? 1 : 0);
+  g.fillStyle = '#2d3a2d'; g.fillRect(-6 + lg, -16, 5, 16); g.fillRect(1 - lg, -16, 5, 16);
+  g.fillStyle = p[14] ? '#fff' : col; g.beginPath(); g.moveTo(-8, -16); g.lineTo(-9, -38); g.quadraticCurveTo(0, -43, 9, -38); g.lineTo(8, -16); g.closePath(); g.fill();
+  g.fillStyle = '#e2b799'; g.beginPath(); g.arc(0, -47, 7, 0, 7); g.fill(); g.fillStyle = p[15] ? '#3a2a20' : '#2d4a2d'; g.beginPath(); g.arc(0, -49, 7.5, Math.PI, 0); g.fill(); g.fillRect(-7.5, -50, 15, 2.5);
+  g.fillStyle = '#111'; g.fillRect(dir * 3, -48, 2, 2);
+  g.save(); g.translate(0, -30); g.rotate(a); if (Math.cos(a) < 0) g.scale(1, -1); g.fillStyle = '#222'; g.fillRect(2, -3, 26, 5); g.fillStyle = '#444'; g.fillRect(8, 2, 6, 6); g.fillStyle = '#e2b799'; g.fillRect(-2, -2, 8, 4); if (p[16]) { g.fillStyle = '#ffd24a'; g.beginPath(); g.moveTo(28, -2); g.lineTo(38, 0); g.lineTo(28, 3); g.fill(); } g.restore();
+  g.restore();
+  g.font = '700 11px system-ui'; g.textAlign = 'center'; g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(x - 22, y - 74, 44, 5); g.fillStyle = p[6] > 50 ? '#5ee06a' : '#f06a4a'; g.fillRect(x - 22, y - 74, 44 * Math.max(0, p[6]) / 100, 5); g.fillStyle = '#fff'; g.fillText(p[1], x, y - 79);
+}
+function background() {
+  const gr = g.createLinearGradient(0, 0, 0, innerHeight); gr.addColorStop(0, '#2a4a78'); gr.addColorStop(.6, '#8fb4d8'); gr.addColorStop(1, '#d8c9a0'); g.fillStyle = gr; g.fillRect(0, 0, innerWidth, innerHeight);
+  g.fillStyle = 'rgba(255,255,255,.55)'; for (let i = 0; i < 6; i++) { const x = ((i * 380 - cam.x * .1 + performance.now() * .01 * (i % 3 + 1)) % (innerWidth + 400) + innerWidth + 400) % (innerWidth + 400) - 200, y = 60 + i * 40; g.beginPath(); g.ellipse(x, y, 70, 18, 0, 0, 7); g.ellipse(x + 40, y + 6, 50, 14, 0, 0, 7); g.fill(); }
+  g.fillStyle = '#4a6f8e'; g.beginPath(); g.moveTo(0, innerHeight); for (let x = 0; x <= innerWidth + 40; x += 40) g.lineTo(x, innerHeight * .72 - 60 * Math.abs(Math.sin((x + cam.x * .2) * .004)) - 30 * Math.sin((x + cam.x * .2) * .011)); g.lineTo(innerWidth, innerHeight); g.fill();
+}
+function render(tnow) {
+  g.setTransform(Math.min(2, devicePixelRatio || 1), 0, 0, Math.min(2, devicePixelRatio || 1), 0, 0); background();
+  if (!snap) return;
+  const sc = scale(), me = snap.p.find(p => p[0] === myId);
+  if (me) { cam.x += (me[2] - cam.x) * .12; cam.y += (me[3] - 40 - cam.y) * .12; }
+  g.save(); g.translate(innerWidth / 2, innerHeight / 2); g.scale(sc, sc); g.translate(-cam.x, -cam.y);
+  for (const [x, y, w] of PLAT) { g.fillStyle = '#6a4a2c'; g.fillRect(x, y + 6, w, 22); const dg = g.createLinearGradient(0, y, 0, y + 28); dg.addColorStop(0, '#7a5434'); dg.addColorStop(1, '#4a3320'); g.fillStyle = dg; g.fillRect(x, y + 6, w, 22); g.fillStyle = '#4f9a3c'; g.fillRect(x - 3, y - 2, w + 6, 10); g.fillStyle = '#74c04e'; g.fillRect(x - 3, y - 2, w + 6, 4); }
+  const age = Math.min(.06, (performance.now() - snapT) / 1000);
+  for (const b of snap.b) { const x = b[0] + b[2] * age, y = b[1] + b[3] * age, m = Math.hypot(b[2], b[3]); g.strokeStyle = '#ffe680'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.lineTo(x - b[2] / m * 18, y - b[3] / m * 18); g.stroke(); }
+  for (const p of snap.p) { const x = p[2] + p[4] * age, y = p[3] + p[5] * age; soldier(p, x, y, tnow / 1000); }
+  g.restore();
+  // HUD
+  if (me) { g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(12, innerHeight - 30 - (innerWidth < 700 ? 0 : 0), 120, 8); g.fillStyle = '#ffa030'; g.fillRect(12, innerHeight - 30, 120 * me[7], 8); g.fillStyle = '#fff'; g.font = '700 10px system-ui'; g.textAlign = 'left'; g.fillText('JET', 12, innerHeight - 34); if (me[12] > 0) { g.fillStyle = 'rgba(160,0,0,.4)'; g.fillRect(0, 0, innerWidth, innerHeight); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '800 26px system-ui'; g.fillText('RESPAWN IN ' + Math.ceil(me[12]), innerWidth / 2, innerHeight / 2); } }
+  const sorted = [...snap.p].sort((a, b) => b[10] - a[10]).slice(0, 5); $('sb').innerHTML = (roomCode ? '<div style="color:#ffd24a">ROOM ' + roomCode + (ping ? ' &middot; ' + ping + 'ms' : '') + '</div>' : '') + sorted.map(p => (p[0] === myId ? '<b>' : '') + p[1] + ' ' + p[10] + '/' + p[11] + (p[0] === myId ? '</b>' : '')).join('<br>');
+  kills = kills.filter(k => performance.now() - k[1] < 4000); g.textAlign = 'left'; g.font = '700 12px system-ui'; kills.forEach((k, i) => { g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(10, 52 + i * 20, g.measureText(k[0]).width + 12, 17); g.fillStyle = '#fff'; g.fillText(k[0], 16, 65 + i * 20); });
+  // touch sticks
+  for (const s of ['L', 'R']) { const k = sticks[s]; if (!k) continue; g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 3; g.beginPath(); g.arc(k.x, k.y, 60, 0, 7); g.stroke(); g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(k.x + Math.max(-60, Math.min(60, k.dx)), k.y + Math.max(-60, Math.min(60, k.dy)), 26, 0, 7); g.fill(); }
+  if (!sticks.L && !sticks.R && mode && 'ontouchstart' in window) { g.fillStyle = 'rgba(255,255,255,.35)'; g.font = '600 12px system-ui'; g.textAlign = 'center'; g.fillText('LEFT: move / drag up = jetpack', innerWidth * .25, innerHeight - 60); g.fillText('RIGHT: aim + shoot', innerWidth * .75, innerHeight - 60); }
+}
+(function loop(t) { if (mode) { readInput(); if (mode === 'host' && sim) { /* host input set in tick */ } } render(t); requestAnimationFrame(loop); })(0);
+window.__arena = { get sim() { return sim; }, get snap() { return snap; }, get mode() { return mode; }, get myId() { return myId; }, inp };
+</script></body></html>

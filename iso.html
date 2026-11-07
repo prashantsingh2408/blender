@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Agent GO - Diorama Puzzle</title><meta name="theme-color" content="#cfc9bd">
+<style>
+html,body{margin:0;height:100%;background:#d9d4c8;overflow:hidden;font-family:system-ui,sans-serif;touch-action:none;-webkit-user-select:none;user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 12px 0;pointer-events:none;color:#3a352c;font-weight:700;letter-spacing:.06em;font-size:13px}
+#hud a,#hud button{pointer-events:auto;background:rgba(40,36,30,.78);color:#f3efe6;border:0;border-radius:18px;padding:8px 14px;font:700 13px system-ui;text-decoration:none}
+#msg{position:fixed;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));text-align:center;color:#2f2a22;font:600 15px system-ui;letter-spacing:.04em;padding:0 16px}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud"><a href="./">&#9664; GAME</a><span id="mv">MOVES 0</span><button id="rs">RESTART</button></div>
+<div id="msg">Tap a glowing node next to you to move. Reach the exit. Sneak up from behind to take guards out.</div>
+<script>
+'use strict';
+// ---- level data (7 x 6 tiles). Nodes sit on tile centres; edges are the drawn path lines.
+const W = 7, H = 6;
+const MAP = [
+  'ggggggg',
+  'ggggwww',
+  'gggggww',
+  'ttgggww',
+  'gtggggw',
+  'gtgggww'
+].map(r => r.split(''));
+const POOL = (x, y) => MAP[y] && MAP[y][x] === 'w';
+// path graph: list of polylines in node coords
+const LINES = [
+  [[0,5],[1,5],[2,5],[2,4],[2,3],[2,2],[2,1],[3,1],[4,1],[4,0]],
+  [[2,3],[3,3],[4,3],[4,2],[4,1]],
+  [[0,5],[0,4],[0,3],[1,3],[2,3]],
+  [[2,1],[1,1],[0,1]],
+  [[4,3],[4,4],[3,4],[2,4]],
+];
+const START = [0, 5], EXIT = [4, 0];
+// guards: cyclic routes
+const GUARDS = [
+  { route: [[4,3],[4,2],[4,1],[4,1],[4,2],[4,3]] },
+  { route: [[0,1],[1,1],[2,1],[2,1],[1,1],[0,1]] },
+];
+const HEDGES = [[1,2,1,.7],[3,2,.9,1],[3,0,1,.6],[5,5,.0,0]].filter(h => h[2] > 0);
+const key = (x, y) => x + ',' + y;
+const ADJ = new Map();
+const addE = (a, b) => { const ka = key(...a), kb = key(...b); (ADJ.get(ka) || ADJ.set(ka, new Set()).get(ka)).add(kb); (ADJ.get(kb) || ADJ.set(kb, new Set()).get(kb)).add(ka); };
+LINES.forEach(l => { for (let i = 0; i < l.length - 1; i++) addE(l[i], l[i + 1]); });
+const edge = (a, b) => ADJ.get(key(...a))?.has(key(...b));
+
+// ---- pure game logic (state is plain data so the solver can clone it)
+function initState() { return { p: START.slice(), g: GUARDS.map(() => ({ i: 0, dead: false })), over: null, moves: 0 }; }
+const gPos = (s, k) => GUARDS[k].route[s.g[k].i];
+function gFace(s, k) {
+  const r = GUARDS[k].route, i = s.g[k].i, c = r[i];
+  for (let j = 1; j <= r.length; j++) { const n = r[(i + j) % r.length]; if (n[0] !== c[0] || n[1] !== c[1]) return [Math.sign(n[0] - c[0]), Math.sign(n[1] - c[1])]; }
+  return [0, 1];
+}
+function sees(s, k) {
+  if (s.g[k].dead) return false;
+  let c = gPos(s, k); const f = gFace(s, k);
+  for (let r = 0; r < 2; r++) { const n = [c[0] + f[0], c[1] + f[1]]; if (!edge(c, n)) return false; if (n[0] === s.p[0] && n[1] === s.p[1]) return true; c = n; }
+  return false;
+}
+function seenNodes(s, k) { const out = []; if (s.g[k].dead) return out; let c = gPos(s, k); const f = gFace(s, k); for (let r = 0; r < 2; r++) { const n = [c[0] + f[0], c[1] + f[1]]; if (!edge(c, n)) break; out.push(n); c = n; } return out; }
+function step(s0, to) { // to = [x,y]; returns new state
+  const s = JSON.parse(JSON.stringify(s0));
+  if (s.over) return s;
+  if (!(to[0] === s.p[0] && to[1] === s.p[1])) { if (!edge(s.p, to)) return s0; s.p = to.slice(); }
+  s.moves++;
+  GUARDS.forEach((G, k) => { if (!s.g[k].dead && gPos(s, k)[0] === s.p[0] && gPos(s, k)[1] === s.p[1]) s.g[k].dead = true; }); // captured
+  if (s.p[0] === EXIT[0] && s.p[1] === EXIT[1]) { s.over = 'win'; return s; }
+  GUARDS.forEach((G, k) => { if (s.g[k].dead) return; s.g[k].i = (s.g[k].i + 1) % G.route.length; if (gPos(s, k)[0] === s.p[0] && gPos(s, k)[1] === s.p[1]) s.over = 'lose'; });
+  if (!s.over) for (let k = 0; k < GUARDS.length; k++) if (sees(s, k)) s.over = 'lose';
+  return s;
+}
+function solve() { // BFS -> number of moves or -1
+  const s0 = initState(), id = s => JSON.stringify([s.p, s.g.map(g => g.i * 2 + (g.dead ? 1 : 0))]);
+  const seen = new Set([id(s0)]); let q = [[s0, 0]];
+  while (q.length) { const nq = []; for (const [s, d] of q) { const opts = [s.p, ...[...ADJ.get(key(...s.p))].map(k => k.split(',').map(Number))]; for (const o of opts) { const n = step(s, o); if (n.over === 'win') return d + 1; if (n.over) continue; const k = id(n); if (!seen.has(k)) { seen.add(k); nq.push([n, d + 1]); } } } q = nq; if (seen.size > 200000) break; }
+  return -1;
+}
+
+// ---- rendering
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+let S = initState(), anim = 0, TW = 100, TH = 50, ZH = 50, OX = 0, OY = 0, DPR = 1, shown = null, hist = [];
+function fit() {
+  DPR = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * DPR; cv.height = innerHeight * DPR;
+  TW = Math.min(innerWidth * .96 / ((W + H) / 2), innerHeight * .9 / 5.1); TH = TW / 2; ZH = TW * .55;
+  OX = innerWidth / 2 - (W - H) * TW / 4; OY = innerHeight / 2 - 1.3 * TW + 8;
+}
+addEventListener('resize', fit); fit();
+const P = (x, y, z = 0) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2 - z * ZH];
+function poly(pts, fill, stroke, lw) { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.stroke(); } }
+function tile(x, y, z, w, d, fill, stroke) { poly([P(x, y, z), P(x + w, y, z), P(x + w, y + d, z), P(x, y + d, z)], fill, stroke); }
+function box(x, y, w, d, h, z0, top, left, right) { // visible faces: top, left-front (y+d side), right-front (x+w side)
+  poly([P(x, y + d, z0), P(x + w, y + d, z0), P(x + w, y + d, z0 + h), P(x, y + d, z0 + h)], left);
+  poly([P(x + w, y, z0), P(x + w, y + d, z0), P(x + w, y + d, z0 + h), P(x + w, y, z0 + h)], right);
+  poly([P(x, y, z0 + h), P(x + w, y, z0 + h), P(x + w, y + d, z0 + h), P(x, y + d, z0 + h)], top);
+}
+function grassTile(x, y) {
+  const a = (x + y) % 2 ? '#4d7a38' : '#477234';
+  tile(x, y, 0, 1, 1, a); g.save(); g.globalAlpha = .18; g.strokeStyle = '#2d4f22'; g.lineWidth = 1;
+  for (let i = 1; i < 6; i++) { const a1 = P(x, y + i / 6), b1 = P(x + 1, y + i / 6); g.beginPath(); g.moveTo(a1[0], a1[1]); g.lineTo(b1[0], b1[1]); g.stroke(); } g.restore();
+}
+function drawBoard() {
+  // shadow
+  poly([P(-.2, H + .3, -.7), P(W + .3, H + .3, -.7), P(W + .3, -.2, -.7), P(W + 1.2, .6, -.7), P(W + 1.2, H + 1.2, -.7), P(-.2, H + 1.2, -.7)].slice(0, 3).concat([P(W + 1.2, H + 1.2, -.7), P(-.2, H + 1.2, -.7)]), 'rgba(60,50,40,.18)');
+  // wooden/stone base block
+  const T = .75;
+  poly([P(0, H, -T), P(W, H, -T), P(W, H, 0), P(0, H, 0)], lin(P(0, H, 0), P(0, H, -T), '#f0ece2', '#c9c3b4'));
+  for (let x = 0; x < W; x++) if (!POOL(x, H - 1)) {} // left face drawn solid
+  poly([P(W, 0, -T), P(W, H, -T), P(W, H, 0), P(W, 0, 0)], '#7a4a2a');
+  // right face: wood, with pool cells as translucent blue
+  for (let y = 0; y < H; y++) if (POOL(W - 1, y)) poly([P(W, y, -.35), P(W, y + 1, -.35), P(W, y + 1, 0), P(W, y, 0)], 'rgba(120,200,225,.75)');
+  // tiles
+  for (let s = 0; s <= W + H - 2; s++) for (let y = 0; y < H; y++) { const x = s - y; if (x < 0 || x >= W) continue; const c = MAP[y][x];
+    if (c === 'g' || c === 'h') grassTile(x, y);
+    else if (c === 't') { tile(x, y, 0, 1, 1, (x + y) % 2 ? '#e7e2d6' : '#dcd7ca', '#b9b3a3'); }
+    else if (c === 'w') { tile(x, y, 0, 1, 1, '#e8e4d8', '#bdb7a6'); tile(x + .08, y + .08, -.3, .84, .84, '#7fcfe3'); tile(x + .22, y + .18, -.3, .4, .25, 'rgba(255,255,255,.25)'); }
+  }
+  // stone rim around pool
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (POOL(x, y)) { if (!POOL(x - 1, y)) { const a = P(x, y, 0), b = P(x, y + 1, 0); g.strokeStyle = '#efeadc'; g.lineWidth = TW * .05; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); } if (!POOL(x, y - 1)) { const a = P(x, y, 0), b = P(x + 1, y, 0); g.strokeStyle = '#efeadc'; g.lineWidth = TW * .05; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); } }
+}
+function lin(a, b, c1, c2) { const gr = g.createLinearGradient(a[0], a[1], b[0], b[1]); gr.addColorStop(0, c1); gr.addColorStop(1, c2); return gr; }
+function drawPaths(seen) {
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  LINES.forEach(l => { g.beginPath(); l.forEach((n, i) => { const p = P(n[0] + .5, n[1] + .5, .01); i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); }); g.strokeStyle = 'rgba(20,24,16,.8)'; g.lineWidth = Math.max(1.4, TW * .018); g.stroke(); });
+  const nodes = new Set(); LINES.forEach(l => l.forEach(n => nodes.add(key(...n))));
+  nodes.forEach(k => { const [x, y] = k.split(',').map(Number); const p = P(x + .5, y + .5, .01); const hot = seen.has(k);
+    g.fillStyle = hot ? 'rgba(220,50,40,.55)' : 'rgba(20,24,16,.85)'; g.beginPath(); g.ellipse(p[0], p[1], TW * (hot ? .1 : .04), TH * (hot ? .1 : .04) * 1, 0, 0, 7); g.fill(); });
+  const ex = P(EXIT[0] + .5, EXIT[1] + .5, .02); g.strokeStyle = '#ffd24a'; g.lineWidth = TW * .03; g.beginPath(); g.ellipse(ex[0], ex[1], TW * .22, TH * .22, 0, 0, 7); g.stroke(); g.strokeStyle = 'rgba(255,210,74,.5)'; g.beginPath(); g.ellipse(ex[0], ex[1], TW * .3 + Math.sin(performance.now() / 300) * 3, TH * .3 + Math.sin(performance.now() / 300) * 2, 0, 0, 7); g.stroke();
+}
+function figurine(x, y, shirt, tie, face, alpha, dead) {
+  const b = P(x, y, .0), r = TW * .17; g.save(); g.globalAlpha = alpha;
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(b[0] + r * .3, b[1] + r * .1, r * 1.15, r * .5, 0, 0, 7); g.fill();
+  if (dead) { g.restore(); return; }
+  g.fillStyle = '#1b1b1f'; g.beginPath(); g.ellipse(b[0], b[1] - 2, r * 1.05, r * .48, 0, 0, 7); g.fill(); g.fillStyle = '#3a6f86'; g.beginPath(); g.ellipse(b[0], b[1] - 4, r * 1.0, r * .44, 0, 0, 7); g.fill();
+  const h = TW * .55; // body
+  const gr = g.createLinearGradient(b[0] - r, 0, b[0] + r, 0); gr.addColorStop(0, '#34343c'); gr.addColorStop(1, '#0f0f13');
+  g.fillStyle = gr; g.beginPath(); g.moveTo(b[0] - r * .62, b[1] - 4); g.lineTo(b[0] - r * .3, b[1] - h * .78); g.lineTo(b[0] + r * .3, b[1] - h * .78); g.lineTo(b[0] + r * .62, b[1] - 4); g.closePath(); g.fill();
+  g.fillStyle = shirt; g.beginPath(); g.moveTo(b[0] - r * .17, b[1] - h * .78); g.lineTo(b[0] + r * .17, b[1] - h * .78); g.lineTo(b[0], b[1] - h * .35); g.closePath(); g.fill();
+  if (tie) { g.fillStyle = tie; g.beginPath(); g.moveTo(b[0] - 1.5, b[1] - h * .74); g.lineTo(b[0] + 1.5, b[1] - h * .74); g.lineTo(b[0] + 2.5, b[1] - h * .45); g.lineTo(b[0], b[1] - h * .4); g.lineTo(b[0] - 2.5, b[1] - h * .45); g.closePath(); g.fill(); }
+  const hg = g.createRadialGradient(b[0] - r * .15, b[1] - h * .94, 1, b[0], b[1] - h * .9, r * .5); hg.addColorStop(0, '#fff0e0'); hg.addColorStop(1, face);
+  g.fillStyle = hg; g.beginPath(); g.arc(b[0], b[1] - h * .88, r * .42, 0, 7); g.fill();
+  g.fillStyle = '#111'; g.beginPath(); g.arc(b[0], b[1] - h * .9, r * .41, Math.PI * 1.05, Math.PI * 1.95); g.fill();
+  g.restore();
+}
+function umbrella(x, y) { const b = P(x, y, 0), t = P(x, y, 1.25); g.strokeStyle = '#8b7d6b'; g.lineWidth = 3; g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(t[0], t[1]); g.stroke(); g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(b[0] + TW * .15, b[1], TW * .45, TH * .45, 0, 0, 7); g.fill(); g.fillStyle = '#f2ead7'; g.beginPath(); g.ellipse(t[0], t[1], TW * .5, TH * .42, 0, Math.PI, 0); g.quadraticCurveTo(t[0], t[1] - TW * .4, t[0] - TW * .5, t[1]); g.fill(); g.fillStyle = '#ddd2b9'; g.beginPath(); g.ellipse(t[0], t[1], TW * .5, TH * .42, 0, 0, Math.PI); g.fill(); }
+function palm(x, y) { const b = P(x, y, 0), t = P(x, y, 1.9); g.strokeStyle = '#9a8566'; g.lineWidth = TW * .035; g.beginPath(); g.moveTo(b[0], b[1]); g.quadraticCurveTo(b[0] + 8, (b[1] + t[1]) / 2, t[0], t[1]); g.stroke(); g.fillStyle = '#2f6a34'; for (let i = 0; i < 6; i++) { const a = i * 1.05 + 0.2; g.beginPath(); g.moveTo(t[0], t[1]); g.quadraticCurveTo(t[0] + Math.cos(a) * TW * .3, t[1] + Math.sin(a) * TW * .08 - TW * .12, t[0] + Math.cos(a) * TW * .55, t[1] + Math.sin(a) * TW * .2); g.quadraticCurveTo(t[0] + Math.cos(a) * TW * .3, t[1] + Math.sin(a) * TW * .08 - TW * .02, t[0], t[1]); g.fill(); } }
+function swimmer() { const t = performance.now() / 900, p = P(5.2 + Math.sin(t) * .3, 3.6 + Math.sin(t * .7) * .4, -.25); g.fillStyle = '#e8a98a'; g.beginPath(); g.ellipse(p[0], p[1], TW * .07, TH * .1, .6, 0, 7); g.fill(); g.fillStyle = '#2a2a2a'; g.beginPath(); g.ellipse(p[0] - TW * .05, p[1], TW * .06, TH * .09, .6, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(p[0], p[1], TW * .13 + Math.sin(t * 4) * 2, TH * .15, 0, 0, 7); g.stroke(); }
+function hedge(x, y, w, d) { box(x + .08, y + .08, w * .84, d * .84, .45, 0, '#4b8a46', '#2b5a2d', '#245027'); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+let prev = null, tAnim = 1;
+function nodePos(n) { return [n[0] + .5, n[1] + .5]; }
+function render() {
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const bg = g.createRadialGradient(innerWidth / 2, innerHeight * .4, 20, innerWidth / 2, innerHeight * .5, innerHeight); bg.addColorStop(0, '#f1eee6'); bg.addColorStop(1, '#c9c3b3'); g.fillStyle = bg; g.fillRect(0, 0, innerWidth, innerHeight);
+  drawBoard();
+  const seen = new Set(); for (let k = 0; k < GUARDS.length; k++) seenNodes(S, k).forEach(n => seen.add(key(...n)));
+  drawPaths(seen);
+  // depth-sorted props
+  const items = [];
+  HEDGES.forEach(h => items.push({ z: h[0] + h[1] + h[2], f: () => hedge(h[0], h[1], h[2], h[3] > 1 ? 1 : h[3]) }));
+  items.push({ z: 5.4 + 2.4, f: () => umbrella(5.6, 1.4) }, { z: 0.2, f: () => palm(.3, .3) }, { z: 1, f: () => palm(1.7, .2) }, { z: 9, f: swimmer });
+  const t = Math.min(1, tAnim);
+  const pp = prev ? [lerp(prev.p[0], S.p[0], t), lerp(prev.p[1], S.p[1], t)] : S.p;
+  items.push({ z: pp[0] + pp[1] + 1, f: () => figurine(pp[0] + .5, pp[1] + .5, '#fff', '#c01820', '#e2b799', 1) });
+  GUARDS.forEach((G, k) => { const cur = gPos(S, k), pv = prev ? GUARDS[k].route[prev.g[k].i] : cur; const gp = [lerp(pv[0], cur[0], t), lerp(pv[1], cur[1], t)]; items.push({ z: gp[0] + gp[1] + 1, f: () => figurine(gp[0] + .5, gp[1] + .5, '#4a9bd0', null, '#d9aa88', S.g[k].dead ? Math.max(0, 1 - tAnim * 2) : 1, S.g[k].dead && tAnim > .5) }); });
+  items.sort((a, b) => a.z - b.z).forEach(i => i.f());
+  if (S.over) { g.fillStyle = 'rgba(30,26,20,.55)'; g.fillRect(0, innerHeight * .38, innerWidth, innerHeight * .2); g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '800 ' + Math.min(44, innerWidth / 10) + 'px system-ui'; g.fillText(S.over === 'win' ? 'TARGET ELIMINATED' : 'SPOTTED!', innerWidth / 2, innerHeight * .48); g.font = '600 15px system-ui'; g.fillText(S.over === 'win' ? 'Cleared in ' + S.moves + ' moves - tap to play again' : 'Tap to try again', innerWidth / 2, innerHeight * .54); }
+}
+function setMsg(t) { document.getElementById('msg').textContent = t; }
+function move(to) { if (S.over) { reset(); return; } const n = step(S, to); if (n === S) return; prev = S; hist.push(S); S = n; tAnim = 0; document.getElementById('mv').textContent = 'MOVES ' + S.moves; if (S.over === 'win') setMsg('Clean exit. Well done, Agent.'); if (S.over === 'lose') setMsg('A guard spotted you. Watch the red nodes - they show what guards see.'); }
+function reset() { S = initState(); prev = null; tAnim = 1; hist = []; document.getElementById('mv').textContent = 'MOVES 0'; setMsg('Tap a glowing node next to you to move. Reach the exit. Sneak up from behind to take guards out.'); }
+document.getElementById('rs').onclick = reset;
+cv.addEventListener('pointerdown', e => {
+  if (S.over) { reset(); return; }
+  let best = null, bd = 1e9; const opts = [S.p, ...[...ADJ.get(key(...S.p))].map(k => k.split(',').map(Number))];
+  opts.forEach(n => { const p = P(n[0] + .5, n[1] + .5, 0), d = Math.hypot(e.clientX - p[0], (e.clientY - p[1]) * 1.6); if (d < bd) { bd = d; best = n; } });
+  if (best && bd < TW * .6) move(best);
+});
+addEventListener('keydown', e => { const m = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[e.key]; if (e.key === ' ') move(S.p); else if (m) { const to = [S.p[0] + m[0], S.p[1] + m[1]]; if (edge(S.p, to)) move(to); } if (e.key === 'r') reset(); });
+function drawHints() { if (S.over) return; const opts = [...ADJ.get(key(...S.p))].map(k => k.split(',').map(Number)); const a = .5 + .35 * Math.sin(performance.now() / 250); opts.forEach(n => { const p = P(n[0] + .5, n[1] + .5, .03); g.strokeStyle = 'rgba(255,255,255,' + a + ')'; g.lineWidth = 3; g.beginPath(); g.ellipse(p[0], p[1], TW * .13, TH * .13, 0, 0, 7); g.stroke(); }); }
+let last = performance.now();
+(function loop(now) { tAnim += (now - last) / 280; last = now; render(); drawHints(); requestAnimationFrame(loop); })(last);
+window.__iso = { get S() { return S; }, step, solve, initState, move, reset };
+</script></body></html>
