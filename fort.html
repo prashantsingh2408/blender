@@ -1,0 +1,84 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>Command Fort</title><meta name="theme-color" content="#0f172a"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png">
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0f172a;color:#f8fafc;font-family:"Noto Sans Devanagari",system-ui,sans-serif;overflow:hidden;touch-action:manipulation}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#top{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;padding:max(8px,env(safe-area-inset-top)) 12px 6px;font-weight:800;font-size:15px;pointer-events:none;text-shadow:0 1px 3px #000}
+#top b{color:#f59e0b}
+#bar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:8px 10px max(10px,env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(15,23,42,.9))}
+#bar button{border:0;border-radius:14px;background:#1e293b;color:#f8fafc;font:800 14px/1.1 inherit;padding:10px 12px;min-width:72px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#bar button i{font-style:normal;font-size:24px;line-height:1}
+#bar button small{font-weight:700;color:#f59e0b;font-size:11px}
+#bar button:disabled{opacity:.4}
+#bar button.lane{background:#334155;min-width:52px}#bar button.lane.sel{background:#f59e0b;color:#0f172a}
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,.92);border:2px solid #f59e0b;border-radius:18px;padding:22px 28px;text-align:center;display:none;z-index:5}
+#msg.on{display:block}#msg h2{margin:0 0 6px;font-size:28px}#msg p{margin:0 0 14px;color:#94a3b8;font-size:14px}
+#msg button{border:0;border-radius:12px;background:#f59e0b;color:#0f172a;font:800 16px inherit;padding:10px 22px}
+#hint{position:fixed;left:50%;bottom:92px;max-width:96vw;overflow:hidden;text-overflow:ellipsis;transform:translateX(-50%);background:rgba(15,23,42,.85);border-radius:10px;padding:5px 12px;font-size:12px;color:#cbd5e1;white-space:nowrap;pointer-events:none}
+.tk-mic{top:auto!important;bottom:150px!important;transform:none!important;left:10px!important;width:56px!important;height:56px!important}.tk-chip{top:auto!important;bottom:128px!important;left:10px!important}.tk-heard{top:auto!important;bottom:160px!important;left:72px!important;transform:none!important}.tk-mute{top:auto!important;bottom:214px!important;left:10px!important}
+@media (max-width:560px){#hint{bottom:150px;font-size:11px}.tk-mic{bottom:196px!important;width:50px!important;height:50px!important}.tk-chip{bottom:176px!important}.tk-heard{bottom:206px!important;left:66px!important}.tk-mute{bottom:254px!important}#bar button{min-width:64px;padding:8px 8px;font-size:13px}#bar button i{font-size:21px}}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="top"><span>🏰 <b id="hp">100</b></span><span>💰 <b id="gold">10</b></span><span>☠ <b id="ehp">100</b></span></div>
+<div id="hint">बोलो: "तीन सैनिक ऊपर" · "तीरंदाज़ भेजो" · "हमला" · "टावर बनाओ"</div>
+<div id="bar">
+<button class="lane" data-l="0">⬆ ऊपर</button><button class="lane sel" data-l="1">➡ बीच</button><button class="lane" data-l="2">⬇ नीचे</button>
+<button data-u="s"><i>🗡️</i>सैनिक<small>3</small></button><button data-u="a"><i>🏹</i>तीरंदाज़<small>4</small></button><button data-u="g"><i>🛡️</i>दैत्य<small>8</small></button><button data-u="t"><i>🗼</i>टावर<small>10</small></button><button data-u="all"><i>⚔️</i>हमला<small>सब</small></button>
+</div>
+<div id="msg"><h2 id="mt"></h2><p id="mp"></p><button id="again">फिर से</button></div>
+<script>
+(function(){
+var cv=document.getElementById('c'),g=cv.getContext('2d'),W=0,H=0,DPR=1;
+function fit(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;g.setTransform(DPR,0,0,DPR,0,0)}addEventListener('resize',fit);fit();
+var TYPES={s:{n:'सैनिक',cost:3,hp:30,dmg:6,rng:14,spd:38,em:'🗡️',r:11},a:{n:'तीरंदाज़',cost:4,hp:18,dmg:5,rng:110,spd:30,em:'🏹',r:10},g:{n:'दैत्य',cost:8,hp:110,dmg:14,rng:16,spd:22,em:'🛡️',r:15},t:{n:'टावर',cost:10}};
+var S,lane=1,ac=null;
+function reset(){S={gold:10,egold:6,hp:100,ehp:100,t:0,units:[],shots:[],towers:[{side:1,lane:1,hp:60,cd:0},{side:-1,lane:1,hp:60,cd:0}],over:null,log:[],et:0,level:1};document.getElementById('msg').classList.remove('on');hud()}
+function field(){var top=H*0.12,bot=H-(W<560?176:120),pad=Math.min(80,W*0.12);return{x0:pad,x1:W-pad,y0:top,y1:bot,ly:function(l){return top+(bot-top)*(0.2+l*0.3)}}}
+function spawn(side,t,l){var T=TYPES[t];if(!T||t==='t')return false;var bank=side===1?'gold':'egold';if(S[bank]<T.cost)return false;S[bank]-=T.cost;var f=field();S.units.push({side:side,t:t,l:l,x:side===1?f.x0+10:f.x1-10,hp:T.hp,cd:0,bob:Math.random()*6});return true}
+function tower(side,l){if(side===1){if(S.gold<10)return false;S.gold-=10}var ex=S.towers.filter(function(t){return t.side===side&&t.lane===l})[0];if(ex){ex.hp=Math.min(120,ex.hp+60)}else S.towers.push({side:side,lane:l,hp:60,cd:0});return true}
+function cmd(t,n,l){n=n||1;if(l==null)l=lane;var done=0;if(t==='all'){['g','a','s','s','a','s'].forEach(function(k){if(spawn(1,k,l))done++});for(var i=0;i<20&&spawn(1,'s',(l+i)%3);i++)done++;return done}if(t==='t')return tower(1,l)?1:0;for(var i=0;i<n;i++)if(spawn(1,t,l))done++;return done}
+/* voice: Hindi/English -> commands. returns true if handled */
+var NUM={'एक':1,'दो':2,'तीन':3,'चार':4,'पाँच':5,'पांच':5,'छह':6,'छः':6,'सात':7,'आठ':8,'दस':10,'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'ten':10};
+function voice(text){var l=String(text).toLowerCase();if(S.over&&/फिर|दोबारा|again|start|शुरू/.test(l)){reset();return true}
+ var n=1;for(var k in NUM)if(l.indexOf(k)>=0)n=NUM[k];var d=l.match(/\d+/);if(d)n=Math.min(20,+d[0]);
+ var ln=null;if(/ऊपर|top|upper|up\b/.test(l))ln=0;else if(/नीचे|bottom|lower|down\b/.test(l))ln=2;else if(/बीच|middle|center|mid\b/.test(l))ln=1;
+ if(ln!=null){lane=ln;hud()}
+ var did=false;
+ if(/हमला|attack|charge|सब भेजो|all out|पूरी सेना/.test(l)){did=cmd('all',1,ln)>0;say(did?'पूरी सेना हमला!':'सोना नहीं है')}
+ else{var any=false;[['s',/सैनिक|soldier|सिपाही|फौजी|sword/],['a',/तीरंदाज|तीरंदाज़|archer|arrow|तीर/],['g',/दैत्य|giant|जायंट|बड़ा वाला|हाथी/],['t',/टावर|tower|रक्षा|defen|किला बनाओ|बचाओ/]].forEach(function(p){if(p[1].test(l)){any=true;var c=cmd(p[0],n,ln);did=did||c>0;say(c>0?(p[0]==='t'?'टावर तैयार।':c+' '+TYPES[p[0]].n+' भेजे।'):'सोना कम है।')}});
+ if(!any&&ln!=null){say(['ऊपर','बीच','नीचे'][ln]+' वाली लाइन चुनी।');did=true}}
+ return did||ln!=null}
+window.GameVoice=voice;
+function say(t){if(window.Talk)Talk.say(t)}
+/* enemy AI: scales with time */
+function enemy(dt){S.et+=dt;S.egold+=dt*(0.9+S.t/120);if(S.et>3.2-Math.min(2,S.t/60)){S.et=0;var l=Math.floor(Math.random()*3),pick=Math.random();var t=pick<0.55?'s':pick<0.85?'a':'g';if(!spawn(-1,t,l)&&S.egold>=3)spawn(-1,'s',l)}if(S.t>40&&S.egold>18&&Math.random()<dt*0.08)tower(-1,Math.floor(Math.random()*3))}
+function step(dt){if(S.over)return;S.t+=dt;S.gold=Math.min(60,S.gold+dt*1.1);enemy(dt);var f=field();
+ S.units.forEach(function(u){var T=TYPES[u.t];u.cd-=dt;var tgt=null,bd=1e9;S.units.forEach(function(v){if(v.side===u.side||v.l!==u.l||v.hp<=0)return;var d=Math.abs(v.x-u.x);if(d<bd){bd=d;tgt=v}});
+  var tw=S.towers.filter(function(t){return t.side!==u.side&&t.lane===u.l&&t.hp>0})[0];var twx=tw?(tw.side===1?f.x0+40:f.x1-40):null;if(tw&&Math.abs(twx-u.x)<bd){bd=Math.abs(twx-u.x);tgt=tw;tgt._x=twx}
+  var fortx=u.side===1?f.x1:f.x0,fd=Math.abs(fortx-u.x);
+  if(tgt&&bd<=T.rng+10){if(u.cd<=0){u.cd=0.8;tgt.hp-=T.dmg;S.shots.push({x:u.x,y:f.ly(u.l)+u.bob,tx:tgt._x||tgt.x,ty:f.ly(tgt.lane!=null?tgt.lane:tgt.l),t:0.2,c:u.side===1?'#fbbf24':'#f87171'})}}
+  else if(fd<=T.rng+8){if(u.cd<=0){u.cd=0.8;if(u.side===1)S.ehp-=T.dmg;else S.hp-=T.dmg}}
+  else u.x+=T.spd*dt*u.side});
+ S.towers.forEach(function(t){if(t.hp<=0)return;t.cd-=dt;var tx=t.side===1?f.x0+40:f.x1-40;var e=null,bd=150;S.units.forEach(function(u){if(u.side===t.side||u.l!==t.lane||u.hp<=0)return;var d=Math.abs(u.x-tx);if(d<bd){bd=d;e=u}});if(e&&t.cd<=0){t.cd=0.6;e.hp-=7;S.shots.push({x:tx,y:f.ly(t.lane)-26,tx:e.x,ty:f.ly(e.l),t:0.2,c:t.side===1?'#60a5fa':'#f87171'})}});
+ S.units=S.units.filter(function(u){return u.hp>0});S.towers=S.towers.filter(function(t){return t.hp>0});S.shots.forEach(function(s){s.t-=dt});S.shots=S.shots.filter(function(s){return s.t>0});
+ if(S.ehp<=0){S.over='win';end('🏆 किला फ़तह!','दुश्मन का किला गिरा · समय '+Math.round(S.t)+' s');say('किला फ़तह! शाबाश सेनापति।')}else if(S.hp<=0){S.over='lose';end('💀 किला गिर गया','दुश्मन जीत गया · "फिर से" बोलो');say('हमारा किला गिर गया...')}hud()}
+function end(t,p){document.getElementById('mt').textContent=t;document.getElementById('mp').textContent=p;document.getElementById('msg').classList.add('on');if(window.Talk)Talk.event(S.over)}
+function hud(){document.getElementById('gold').textContent=Math.floor(S.gold);document.getElementById('hp').textContent=Math.max(0,Math.ceil(S.hp));document.getElementById('ehp').textContent=Math.max(0,Math.ceil(S.ehp));document.querySelectorAll('#bar .lane').forEach(function(b){b.classList.toggle('sel',+b.dataset.l===lane)});document.querySelectorAll('#bar [data-u]').forEach(function(b){var u=b.dataset.u;b.disabled=u!=='all'&&S.gold<(TYPES[u].cost||0)})}
+function draw(){var f=field();g.fillStyle='#0f172a';g.fillRect(0,0,W,H);
+ /* board */g.fillStyle='#14532d';g.fillRect(f.x0-30,f.y0-20,f.x1-f.x0+60,f.y1-f.y0+40);g.fillStyle='#166534';for(var i=0;i<3;i++){var y=f.ly(i);g.fillRect(f.x0-30,y-18,f.x1-f.x0+60,36)}g.strokeStyle='rgba(255,255,255,.08)';g.lineWidth=1;for(var x=f.x0-30;x<f.x1+30;x+=40){g.beginPath();g.moveTo(x,f.y0-20);g.lineTo(x,f.y1+20);g.stroke()}
+ g.fillStyle='rgba(245,158,11,.18)';g.fillRect(f.x0-30,f.ly(lane)-18,f.x1-f.x0+60,36);
+ /* forts */fort(f.x0-10,f.y0,f.y1,'#2563eb',S.hp,'🏰');fort(f.x1+10,f.y0,f.y1,'#b91c1c',S.ehp,'🏯');
+ S.towers.forEach(function(t){var x=t.side===1?f.x0+40:f.x1-40,y=f.ly(t.lane);g.font='26px system-ui';g.textAlign='center';g.fillText('🗼',x,y-10);bar(x,y-34,34,t.hp/120,t.side===1?'#60a5fa':'#f87171')});
+ S.units.forEach(function(u){var T=TYPES[u.t],y=f.ly(u.l)+Math.sin(S.t*8+u.bob)*1.5;g.font=(T.r*2)+'px system-ui';g.textAlign='center';g.save();g.translate(u.x,y+T.r*0.7);if(u.side===-1){g.scale(-1,1)}g.fillText(T.em,0,0);g.restore();bar(u.x,y-T.r-8,24,u.hp/T.hp,u.side===1?'#fbbf24':'#f87171')});
+ S.shots.forEach(function(s){g.strokeStyle=s.c;g.lineWidth=2;g.globalAlpha=s.t/0.2;g.beginPath();g.moveTo(s.x,s.y);g.lineTo(s.tx,s.ty);g.stroke();g.globalAlpha=1});
+ g.fillStyle='#94a3b8';g.font='700 11px system-ui';g.textAlign='left';g.fillText('लेवल '+S.level+' · '+Math.round(S.t)+'s',f.x0-30,f.y0-26)}
+function fort(x,y0,y1,c,hp,em){g.fillStyle=c;g.fillRect(x-22,y0,44,y1-y0);g.fillStyle='rgba(0,0,0,.25)';for(var y=y0;y<y1;y+=24)g.fillRect(x-22,y,44,2);g.font='34px system-ui';g.textAlign='center';g.fillStyle='#fff';g.fillText(em,x,(y0+y1)/2+12);bar(x,y0-14,44,hp/100,c)}
+function bar(x,y,w,p,c){g.fillStyle='rgba(0,0,0,.5)';g.fillRect(x-w/2,y,w,4);g.fillStyle=c;g.fillRect(x-w/2,y,w*Math.max(0,Math.min(1,p)),4)}
+document.querySelectorAll('#bar .lane').forEach(function(b){b.onclick=function(){lane=+b.dataset.l;hud()}});
+document.querySelectorAll('#bar [data-u]').forEach(function(b){b.onclick=function(){cmd(b.dataset.u,1,lane);hud()}});
+document.getElementById('again').onclick=reset;
+reset();var last=performance.now();(function loop(n){var dt=Math.min(0.05,(n-last)/1000);last=n;step(dt);draw();requestAnimationFrame(loop)})(last);
+window.__fort={get S(){return S},cmd:cmd,voice:voice,reset:reset,get lane(){return lane}};
+})();
+</script>
+<script src="talk.js" data-game="fort"></script>
+</body></html>

@@ -33,6 +33,11 @@
       kill: { confident: ['शानदार शॉट!', 'एक और गिरा!'], angry: ['बहुत हो गया, रुको!'], nervous: ['कोई इसे रोको!'], respectful: ['क्या निशाना है, वाह!'] },
       died: { confident: ['गिर गए! रीस्पॉन।', 'हा! उड़ना सीखो।'], angry: ['उठो और बदला लो!'], nervous: ['ओह, वो तो बुरा लगा।'], respectful: ['कोई बात नहीं, वापस आओ।'] },
       win: ['विजेता!'], lose: ['अगली बार।'] },
+    fort: { name: 'सेनापति', title: 'किले का रक्षक', color: '#b91c1c', pitch: 0.85,
+      start: ['सेनापति तैयार। हुक्म दो: सैनिक, तीरंदाज़, दैत्य, या हमला।', 'किला तुम्हारा, सेना तुम्हारी। बोलो क्या करें?'],
+      kill: { confident: ['दुश्मन गिरा।'], angry: ['और भेजो! कुचल दो!'], nervous: ['बच गए... अभी के लिए।'], respectful: ['बढ़िया चाल, सेनापति।'] },
+      died: { confident: ['हमारा सैनिक गिरा। और भेजो।'], angry: ['बदला लो!'], nervous: ['किला... खतरे में है।'], respectful: ['हिम्मत रखो।'] },
+      win: ['किला फ़तह! जय हो।'], lose: ['किला गिर गया। फिर से लड़ेंगे।'] },
     generic: { name: 'बॉस', title: '', color: '#8e24aa', pitch: 1,
       start: ['चलो, खेल शुरू।'], kill: { confident: ['ठीक।'], angry: ['बस!'], nervous: ['रुक।'], respectful: ['बढ़िया।'] },
       died: { confident: ['हा!'], angry: ['यही होना था।'], nervous: ['उफ़।'], respectful: ['फिर कोशिश।'] }, win: ['जीत गए।'], lose: ['हार गए।'] }
@@ -158,6 +163,7 @@
 
   function heard(t) {
     var l = t.toLowerCase();
+    if (typeof window.GameVoice === 'function') { var handled = false; try { handled = !!window.GameVoice(t); } catch (e) {} if (handled) { say('तुम', t, false); heardShow('⚔ ' + t.trim()); setTimeout(function () { heardShow(''); }, 1500); return; } }
     var cmds = voiceCmd(l);
     if (cmds.length) { heardShow('⌨ ' + cmds.join(' + ')); setTimeout(function () { heardShow(''); }, 1500); if (!/\s/.test(t.trim()) || cmds.length >= 2) { say('तुम', t, false); return; } }
     say('तुम', t, false);
@@ -179,6 +185,7 @@
     contra: function () { var g = window.__game; if (!g || !g.G) return; var G = g.G, p = this.p || (this.p = {}); if (p.state !== G.state) { if (G.state === 'play' && (p.state === 'title' || p.state === 'gameover' || p.state === 'clear' || p.state === undefined)) line('start', true); if (G.state === 'bossdie') line('boss', true); if (G.state === 'clear') line('win', true); if (G.state === 'gameover') line('lose', true); p.state = G.state; } if (p.lives !== undefined && G.lives < p.lives) line('died', true); p.lives = G.lives; if (p.score !== undefined && G.score > p.score) line('kill'); p.score = G.score; },
     car: function () { var c = window.__car; if (!c || !c.S) return; var S = c.S, p = this.p || (this.p = { said: false }); if (!p.said && S.t > 0.5) { p.said = true; line('start', true); } if (S.dead && !p.dead) line('died', true); if (!S.dead && p.dead) { p.said = false; p.far = 0; } p.dead = S.dead; if (p.coins !== undefined && S.coins > p.coins) line('kill'); p.coins = S.coins; var f = Math.floor(S.dist / 400); if (f > (p.far || 0)) { p.far = f; line('far'); } },
     iso: function () { var i = window.__iso; if (!i || !i.S) return; var S = i.S, p = this.p || (this.p = { said: false }); if (!p.said) { p.said = true; line('start', true); } var d = (S.g || []).filter(function (x) { return x.dead; }).length; if (p.d !== undefined && d > p.d) line('kill', true); p.d = d; if (S.over && S.over !== p.over) { if (S.over === 'win') line('win', true); else { line('died', true); } } if (!S.over && p.over) { p.d = 0; } p.over = S.over; },
+    fort: function () { var f = window.__fort; if (!f || !f.S) return; var S = f.S, p = this.p || (this.p = { said: false }); if (!p.said) { p.said = true; line('start', true); } var mine = S.units.filter(function (u) { return u.side === 1; }).length, theirs = S.units.filter(function (u) { return u.side === -1; }).length; if (p.theirs !== undefined && theirs < p.theirs && !S.over) line('kill'); if (p.mine !== undefined && mine < p.mine && !S.over) line('died'); p.mine = mine; p.theirs = theirs; if (S.over && S.over !== p.over) line(S.over, true); if (!S.over) p.over = null; else p.over = S.over; },
     arena: function () { var a = window.__arena; if (!a || !a.snap) return; var s = a.snap, p = this.p || (this.p = { said: false }); if (!p.said) { p.said = true; line('start', true); } var mine = (s.p || []).filter(function (q) { return q[0] === a.myId; })[0]; if (mine) { var dead = mine[12] > 0; if (dead && !p.dead) line('died', true); p.dead = dead; } var n = (s.ev || []).length; if (p.n !== undefined && n > p.n) line('kill'); p.n = n; }
   };
   var watch = W[GAME]; if (watch) setInterval(function () { try { watch.call(watch); } catch (e) {} }, 150);
