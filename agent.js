@@ -24,25 +24,35 @@
     { id: 'prone', re: /लेट जा|झुक|\bduck\b|\bprone\b|नीचे बैठ/ },
     { id: 'up', re: /ऊपर|\bup\b|\bnorth\b/ }, { id: 'down', re: /नीचे|\bdown\b|\bsouth\b/ },
     { id: 'left', re: /बाएँ|बाएं|बायें|\bleft\b|\bwest\b/ }, { id: 'right', re: /दाएँ|दाएं|दायें|\bright\b|\beast\b/ },
+    { id: 'hunt', re: /निशाना|नीशाना|\baim\b|\btarget\b|(?:टैंक|टैक|टाइम|\btank\b|टावर|तोप|turret|cannon|हेलीकॉप्टर|हेलिकॉप्टर|chopper|helicopter|सिपाही|सैनिक|soldier|बॉस|\bboss\b)(?=.*(मार|गोली|उड़ा|खत्म|ख़त्म|shoot|kill|fire|पर|पे))/ },
+    { id: 'cross', re: /पार कर|पार हो|क्रॉस|क्रास|\bcross\b|गड्ढा|गड्ढे|गड्डा|खाई|पानी के ऊपर|\bjump over\b|उस पार|छलांग लगा/ },
     { id: 'start', re: /शुरू|स्टार्ट|फिर से|दोबारा|\bstart\b|\bagain\b|\brestart\b/ }
   ];
-  function parse(t) { var l = String(t).toLowerCase(), out = []; ORDERS.forEach(function (o) { if (o.re.test(l)) out.push(o.id); }); if (out.indexOf('fireon') >= 0 || out.indexOf('fireoff') >= 0) out = out.filter(function (x) { return x !== 'fire'; }); if (out.indexOf('dodge') >= 0) out = out.filter(function (x) { return x !== 'fire'; }); return out; }
+  function parse(t) { var l = String(t).toLowerCase(), out = []; for (var k in learned) { if (l.indexOf(k) >= 0 && learned[k] && learned[k].length) out = out.concat(learned[k]); } ORDERS.forEach(function (o) { if (o.re.test(l)) out.push(o.id); }); if (out.indexOf('fireon') >= 0 || out.indexOf('fireoff') >= 0) out = out.filter(function (x) { return x !== 'fire'; }); if (out.indexOf('dodge') >= 0) out = out.filter(function (x) { return x !== 'fire'; }); if (out.indexOf('cross') >= 0) out = out.filter(function (x) { return x !== 'jump' && x !== 'advance'; }); if (out.indexOf('hunt') >= 0) out = out.filter(function (x) { return x !== 'fire' && x !== 'fireon' && x !== 'advance' && x !== 'hold'; }); return out; }
 
   /* ---------- key helpers ---------- */
   function kev(type, key, code, kc) { return new KeyboardEvent(type, { key: key, code: code, keyCode: kc, which: kc, bubbles: true, cancelable: true }); }
   function tap(key, code, kc, ms) { window.dispatchEvent(kev('keydown', key, code, kc)); setTimeout(function () { window.dispatchEvent(kev('keyup', key, code, kc)); }, ms || 60); }
 
   /* ---------- shared agent state ---------- */
-  var A = { strategy: 'idle', fire: false, dodge: false, burst: 0, fails: 0, t: 0 };
-  var NAMES = { idle: 'खड़ा', advance: 'आगे बढ़ रहा', retreat: 'पीछे हट रहा', hold: 'रुका', auto: 'अपने आप खेल रहा', dodge: 'बच रहा' };
-  function giveBack(why) { A.strategy = 'idle'; A.fire = false; A.dodge = false; A.burst = 0; if (D.release) D.release(); say(why || 'मैं नहीं कर पा रहा, तुम कंट्रोल लो।'); hud(); }
+  var A = { strategy: 'idle', fire: false, dodge: false, burst: 0, fails: 0, t: 0, defend: true };
+  /* memory: words the player taught us ("<unknown phrase>" followed by a known order within 6 s) */
+  var learned = {}; try { learned = JSON.parse(localStorage.getItem('agent_learned_' + GAME) || '{}') || {}; } catch (e) {}
+  var pendingUnknown = null;
+  function learn(phrase, ids) { phrase = String(phrase).toLowerCase().trim(); if (!phrase || phrase.length < 2 || phrase.length > 40) return; learned[phrase] = ids; try { localStorage.setItem('agent_learned_' + GAME, JSON.stringify(learned)); } catch (e) {} }
+  /* the commando answers every order in his own voice */
+  var LINES = { advance: ['जी मालिक, आगे बढ़ता हूँ!', 'आगे चलो!'], retreat: ['पीछे हटता हूँ, मालिक।'], hold: ['रुक गया, मालिक।', 'मोर्चा संभाला।'], dodge: ['बचता हूँ!', 'सिर नीचे!'], fire: ['फायर!'], fireon: ['गोली चलाता रहूँगा!'], fireoff: ['गोली बंद, मालिक।'], jump: ['हुप!'], dash: ['भागो!'], prone: ['लेट गया।'], cross: ['गड्ढा पार करता हूँ, मालिक!'], hunt: ['निशाना लग गया!'], auto: ['मैं संभालता हूँ, मालिक!'], start: ['तैयार, मालिक!'], up: ['ऊपर!'], down: ['नीचे!'], left: ['बाएँ!'], right: ['दाएँ!'], unknown: ['समझा नहीं मालिक, फिर बोलो?', 'क्या करूँ मालिक?'], learned: ['समझ गया मालिक!'] };
+  var SOLDIER = { contra: true };
+  function soldierSay(id) { if (!SOLDIER[GAME]) return; var L = LINES[id]; if (!L) return; var t = L[Math.floor(Math.random() * L.length)]; flash('🪖 ' + t); try { if (window.Talk && Talk.voiceOn === false) return; var u = new SpeechSynthesisUtterance(t); u.lang = 'hi-IN'; u.pitch = 0.7; u.rate = 1.05; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {} }
+  var NAMES = { idle: 'खड़ा', advance: 'आगे बढ़ रहा', retreat: 'पीछे हट रहा', hold: 'रुका', auto: 'अपने आप खेल रहा', dodge: 'बच रहा', cross: 'गड्ढा पार कर रहा', hunt: 'निशाना लगा रहा' };
+  function giveBack(why) { A.strategy = 'idle'; A.fire = false; A.dodge = false; A.burst = 0; if (D.release) D.release(); say(why || 'नहीं हो रहा, तुम संभालो।'); hud(); }
 
   /* ================= drivers ================= */
   var DRIVERS = {};
 
   /* ---- Jungle Commando ---- */
   DRIVERS.contra = (function () {
-    var g = function () { return window.__game; }, lastX = 0, stuckT = 0, fireT = 0, lastJump = 0, proneT = 0, lastLives = null, dodgeHits = 0, move = 0;
+    var g = function () { return window.__game; }, lastX = 0, stuckT = 0, fireT = 0, lastJump = 0, proneT = 0, lastLives = null, dodgeHits = 0, move = 0, lastLivesCross = null;
     function setMove(dir) { var k = g().keys; if (move !== dir) { k.left = dir < 0; k.right = dir > 0; move = dir; } }
     function jump() { if (Date.now() - lastJump < 260) return; lastJump = Date.now(); tap('z', 'KeyZ', 90, 90); }
     function fire() { tap('x', 'KeyX', 88, 70); }
@@ -53,21 +63,39 @@
     var wantJump = false;
     return {
       ready: function () { var G = g(); return G && G.G && G.G.state === 'play' && G.player && !G.player.dead; },
-      release: function () { var G = g(); if (!G) return; setMove(0); G.keys.down = false; },
+      release: function () { var G = g(); if (!G) return; setMove(0); G.keys.down = false; G.aim = null; },
       tick: function (dt) {
         var G = g(), p = G.player, s = A.strategy;
-        var dir = s === 'advance' || s === 'auto' ? 1 : s === 'retreat' ? -1 : 0;
+        var huntDir = 0;
+        if (s === 'hunt' && A.hunt) { var Hn = A.hunt; Hn.t += dt; if (!Hn.e || Hn.e.dead || Hn.e.hp <= 0) { Hn.e = null; var bd = 1e9; (G.enemies || []).forEach(function (e) { if (e.dead || e.hp <= 0) return; var ok = Hn.type.indexOf(e.t) >= 0 || (Hn.type[0] === 'boss' && e.boss); if (!ok) return; var d = Math.abs(e.x - p.x); if (d < bd) { bd = d; Hn.e = e; } }); if (!Hn.e) { if (Hn.t > 1.5) { G.aim = null; A.hunt = null; say(Hn.killed ? 'ख़त्म!' : 'दिखा नहीं।'); A.strategy = 'hold'; hud(); return; } } else if (Hn.t > 1.5 && !Hn.killed) Hn.killed = false; }
+          if (Hn.e) { var ex = Hn.e.x, ey = Hn.e.y - (Hn.e.h || 20) / 2, ddx = ex - p.x, ddy = ey - (p.y - 14), dist = Math.abs(ddx);
+            huntDir = dist > 230 ? Math.sign(ddx) : 0; if (p.dir !== Math.sign(ddx) && dist <= 230) { setMove(Math.sign(ddx)); A.t = 0.04; }
+            G.aim = Math.atan2(ddy, ddx);
+            if (dist <= 300 && Math.abs(ddy) < 140) { fireT += dt; if (fireT > 0.13) { fire(); fireT = 0; } }
+            if (ey < p.y - 40 && dist < 60 && p.onGround) jump();
+            Hn.killed = true; } }
+        else if (G.aim != null && !defTgt) G.aim = null;
+        var dir = s === 'advance' || s === 'auto' || (s === 'cross' && A.cross && A.cross.phase === 'run') ? 1 : s === 'retreat' ? -1 : s === 'hunt' ? huntDir : 0;
+        /* auto-defence: while advancing / crossing / holding, shoot the nearest enemy in front (aimed, incl. ledges) unless told गोली बंद */
+        var defTgt = null;
+        if (A.defend && s !== 'hunt' && s !== 'auto' && (dir !== 0 || s === 'hold' || s === 'cross' || A.dodge)) { var bdd = 270; (G.enemies || []).forEach(function (e) { if (e.dead || e.hp <= 0 || e.t === 'cap' || e.t === 'core') return; var ddx = e.x - p.x; if (dir !== 0 && ddx * dir < 0) return; if (s === 'cross' && ddx < 0) return; var d = Math.abs(ddx); if (d < bdd && Math.abs(e.y - p.y) < 130) { bdd = d; defTgt = e; } });
+          if (defTgt) { G.aim = Math.atan2((defTgt.y - (defTgt.h || 20) / 2) - (p.y - 14), defTgt.x - p.x); if (dir === 0 && p.dir !== Math.sign(defTgt.x - p.x)) { setMove(Math.sign(defTgt.x - p.x)); A.t = 0.04; } if (!(s === 'cross' && nearEdge && A.cross && A.cross.phase === 'run')) { fireT += dt; if (fireT > 0.15) { fire(); fireT = 0; } } } else if (s !== 'hunt' && G.aim != null) G.aim = null; }
         var SF = G.surfaces || [], on = null; for (var i = 0; i < SF.length; i++) { var sf = SF[i]; if (p.x >= sf.x1 - 2 && p.x <= sf.x2 + 2 && Math.abs(sf.y - p.y) < 2) { on = sf; break; } }
         var toEdge = on ? (dir >= 0 ? on.x2 - p.x : p.x - on.x1) : 999, nearEdge = toEdge < 60;
         if (proneT > 0) { proneT -= dt; if (proneT <= 0 || nearEdge) { G.keys.down = false; proneT = 0; } }
         /* dodge first: it overrides everything else this tick (but never by stopping in mid-air) */
-        if (A.dodge || s === 'auto') { var ths = threats(p); if (ths.length) { var first = ths[0], allHigh = ths.every(function (h) { return h.high; });
+        if (s === 'cross' && lastLivesCross !== null && G.G.lives < lastLivesCross) { A.cross = null; giveBack('नहीं हुआ, तुम संभालो।'); lastLivesCross = G.G.lives; return; } lastLivesCross = G.G.lives;
+        if ((A.dodge || s === 'auto') && !(s === 'cross' && nearEdge && A.cross && A.cross.phase === 'run')) { var ths = threats(p); if (ths.length) { var first = ths[0], allHigh = ths.every(function (h) { return h.high; });
             if (p.onGround) { if (allHigh && dir === 0 && !nearEdge) { if (first.t < 0.4) prone(0.3); } else { G.keys.down = false; proneT = 0; wantJump = true; } A.t = 0.2; }
             else if (p.jumpsLeft > 0 && first.t < 0.25 && !first.high && p.vy > 0) { lastJump = 0; jump(); } }
           /* ensure-jump loop: the game drops a jump that lands on a prone frame, so keep asking until we leave the ground */
           if (wantJump) { if (!p.onGround) wantJump = false; else if (!G.keys.down && !p.prone && Date.now() - lastJump > 120) { lastJump = Date.now(); tap('z', 'KeyZ', 90, 90); } }
-          if (lastLives !== null && G.G.lives < lastLives && A.dodge) { dodgeHits++; if (dodgeHits >= 2) { dodgeHits = 0; giveBack('मैं गोली से बच नहीं पा रहा, तुम कंट्रोल लो।'); lastLives = G.G.lives; return; } else say('लगी एक... फिर कोशिश।'); } lastLives = G.G.lives; }
+          if (lastLives !== null && G.G.lives < lastLives && A.dodge) { dodgeHits++; if (dodgeHits >= 2 && s === 'hold') { dodgeHits = 0; giveBack('नहीं हो रहा, तुम संभालो।'); lastLives = G.G.lives; return; } else say('आउच!'); } lastLives = G.G.lives; }
         if (A.t > 0) { A.t -= dt; if (p.onGround && A.t > 0.2) A.t = 0.2; } else setMove(dir);
+        if (s === 'cross' && A.cross) { var C = A.cross; C.t += dt; if (C.x0 === null && on) { C.x0 = p.x; C.s0 = on; }
+          if (C.phase === 'clear') { C.ct += dt; var shooters = (G.enemies || []).filter(function (e) { return !e.dead && e.hp > 0 && e.x > p.x && e.x - p.x < 230 && Math.abs(e.y - p.y) < 130 && e.t !== 'cap' && e.t !== 'core'; }).length; if (!shooters || C.ct > 2.5) { C.phase = 'run'; if (window.Pet && Pet.bark) try { Pet.bark(); } catch (x) {} } }
+          if (C.s0 && on && on !== C.s0 && p.onGround && p.x > C.x0 + 20) { A.strategy = 'hold'; setMove(0); A.cross = null; say('हो गया!'); hud(); return; }
+          if (C.t > 8) { A.cross = null; giveBack('नहीं हो रहा, तुम संभालो।'); return; } }
         if (dir !== 0) {
           if (Math.abs(p.x - lastX) < 0.3 && p.onGround) { stuckT += dt; if (stuckT > 0.35) { jump(); stuckT = 0; } } else stuckT = 0;
           /* terrain: jump before the edge of the platform we stand on, and double-jump if still falling over a gap */
@@ -156,17 +184,23 @@
   var last = performance.now();
   setInterval(function () { var now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; try { if (!D.ready()) return; D.tick(dt); } catch (e) {} }, 33);
 
+  function rawHook(t) { try { if (D.raw) return !!D.raw(t); return !!(window.GameVoice && window.GameVoice(t)); } catch (e) { return false; } }
+  function huntType(t) { t = String(t).toLowerCase(); if (/टैंक|टैक|टाइम|\btank\b/.test(t)) return ['tank']; if (/टावर|तोप|turret|cannon|मशीन/.test(t)) return ['turret', 'cannon']; if (/हेलीकॉप्टर|हेलिकॉप्टर|chopper|helicopter|हेली/.test(t)) return ['chopper']; if (/सिपाही|सैनिक|soldier|आदमी|दुश्मन/.test(t)) return ['rifle', 'runner']; if (/बॉस|\bboss\b/.test(t)) return ['boss']; return null; }
   function order(ids, text) {
-    if (D.raw && D.raw(text)) { hud(); return true; }
+    if (rawHook(text)) { hud(); return true; }
     if (!ids.length) return false;
+    if (pendingUnknown && Date.now() - pendingUnknown.t < 6000) { learn(pendingUnknown.text, ids.slice()); soldierSay('learned'); } pendingUnknown = null;
+    var first = ids.filter(function (x) { return LINES[x]; })[0]; if (first) setTimeout(function () { soldierSay(first); }, 60);
     ids.forEach(function (id) {
       if (D.order(id)) return;
       if (id === 'auto') { A.strategy = 'auto'; A.fire = true; A.dodge = true; }
-      else if (id === 'dodge') { A.dodge = true; A.fire = false; A.burst = 0; if (A.strategy === 'auto') A.strategy = 'hold'; say('ठीक, बच रहा हूँ।'); }
-      else if (id === 'fireon') { A.fire = true; }
-      else if (id === 'fireoff') { A.fire = false; A.burst = 0; }
+      else if (id === 'dodge') { A.dodge = true; A.fire = false; A.burst = 0; if (A.strategy === 'auto') A.strategy = 'hold'; say('ठीक!'); }
+      else if (id === 'fireon') { A.fire = true; A.defend = true; }
+      else if (id === 'fireoff') { A.fire = false; A.burst = 0; A.defend = false; }
       else if (id === 'fire') { A.burst = 4; }
       else if (id === 'advance' || id === 'retreat' || id === 'hold') { A.strategy = id; if (id === 'hold') A.burst = 0; }
+      else if (id === 'hunt') { var ty = huntType(text); A.hunt = { type: ty, t: 0, e: null }; A.strategy = 'hunt'; say(ty ? 'जी!' : 'किस पर?'); if (!ty) A.strategy = 'hold'; }
+      else if (id === 'cross') { A.strategy = 'cross'; A.cross = { x0: null, t: 0, phase: 'clear', ct: 0 }; say('जी!'); }
       else if (id === 'start') { if (A.strategy === 'idle') A.strategy = 'advance'; }
     });
     hud(); return true;
@@ -183,13 +217,17 @@
   /* ---------- hands-free listener ---------- */
   var on = false, rec = null, seen = '', speaking = false, restartT = null;
   var realSpeak = window.speechSynthesis && speechSynthesis.speak && speechSynthesis.speak.bind(speechSynthesis);
-  if (realSpeak) { try { speechSynthesis.speak = function (u) { speaking = true; var end = u.onend, err = u.onerror; u.onend = function (e) { speaking = false; if (end) end(e); kick(); }; u.onerror = function (e) { speaking = false; if (err) err(e); kick(); }; try { if (rec) rec.abort(); } catch (x) {} return realSpeak(u); }; } catch (e) {} }
+  if (realSpeak) { try { speechSynthesis.speak = function (u) { speaking = true; spokenWords = String(u.text || '').toLowerCase().replace(/[।,.!?…]/g, ' ').split(/\s+/).filter(Boolean); spokenEnd = Date.now() + 8000; var end = u.onend, err = u.onerror; u.onend = function (e) { speaking = false; spokenEnd = Date.now(); if (end) end(e); kick(); }; u.onerror = function (e) { speaking = false; spokenEnd = Date.now(); if (err) err(e); kick(); }; try { if (rec) rec.abort(); } catch (x) {} return realSpeak(u); }; } catch (e) {} }
   function kick() { if (on && !speaking) { clearTimeout(restartT); restartT = setTimeout(startRec, 150); } }
+  var spokenWords = [], spokenEnd = 0;
+  function isEcho(t) { if (!spokenWords.length || Date.now() - spokenEnd > 2500) return false; var w = String(t).toLowerCase().split(/\s+/).filter(Boolean); if (!w.length) return false; var hit = w.filter(function (x) { return spokenWords.indexOf(x) >= 0; }).length; return hit >= Math.max(1, Math.ceil(w.length * 0.5)); }
   function handle(t, isFinal) {
+    if (isEcho(t)) { seen = isFinal ? '' : t; return; }
     var fresh = t.length > seen.length && t.indexOf(seen) === 0 ? t.slice(seen.length) : t; seen = isFinal ? '' : t;
     var ids = parse(fresh);
-    if ((D.raw && D.raw(fresh)) || ids.length) { if (ids.length) order(ids, fresh); flash('⌨ ' + fresh.trim()); }
-    else if (isFinal && fresh.trim()) { llmIntent(fresh).then(function (li) { if (li && li.length) { order(li, fresh); flash('🤖 ' + fresh.trim()); } else if (window.Talk) Talk.heard(fresh); }); }
+    var rawHit = rawHook(fresh);
+    if (rawHit || ids.length) { if (!rawHit && ids.length) order(ids, fresh); flash('⌨ ' + fresh.trim()); }
+    else if (isFinal && fresh.trim()) { llmIntent(fresh).then(function (li) { if (li && li.length) { order(li, fresh); flash('🤖 ' + fresh.trim()); } else { pendingUnknown = { text: fresh.trim(), t: Date.now() }; if (SOLDIER[GAME] && on) soldierSay('unknown'); else if (window.Talk) Talk.heard(fresh); } }); }
   }
   function startRec() {
     if (!on || !SR || rec) return;
@@ -213,7 +251,7 @@
   var fl = document.createElement('div'); fl.className = 'ag-fl'; var flT = null;
   function flash(t) { fl.textContent = t; fl.classList.add('on'); clearTimeout(flT); flT = setTimeout(function () { fl.classList.remove('on'); }, 1400); }
   function hud() { hudEl.innerHTML = ''; var a = document.createElement('span'); a.textContent = (on ? '🎧 ' : '') + 'एजेंट: '; var b = document.createElement('b'); var tags = [NAMES[A.strategy] || A.strategy]; if (A.dodge && A.strategy !== 'auto') tags.push('बच रहा'); if (A.fire && A.strategy !== 'auto') tags.push('मार रहा'); b.textContent = tags.join(' · '); hudEl.appendChild(a); hudEl.appendChild(b); hudEl.classList.toggle('on', on || A.strategy !== 'idle' || A.dodge || A.fire); document.body.classList.toggle('ag-on', hudEl.classList.contains('on')); btn.children[1].textContent = on ? 'सुन रहा' : 'कंट्रोल'; }
-  var HELP = { contra: 'आगे बढ़ो · कूदो · मारो · गोली से बचो · रुको · अपने आप खेलो', car: 'आगे बढ़ो (गैस) · रुको (ब्रेक) · अपने आप खेलो', iso: 'ऊपर/नीचे/बाएँ/दाएँ · अपने आप खेलो', arena: 'आगे/पीछे · उड़ो · मारो · बचो · अपने आप खेलो', fort: 'तीन सैनिक ऊपर · तीरंदाज़ भेजो · टावर बनाओ · हमला', mantra: 'असुर पर लिखा मंत्र बोलो · ढाल · शांति · जीवन' };
+  var HELP = { contra: 'आगे बढ़ो · कूदो · मारो · बचो · गड्ढा पार करो · निशाना टैंक पे · रुको · अपने आप खेलो', car: 'आगे बढ़ो (गैस) · रुको (ब्रेक) · अपने आप खेलो', iso: 'ऊपर/नीचे/बाएँ/दाएँ · अपने आप खेलो', arena: 'आगे/पीछे · उड़ो · मारो · बचो · अपने आप खेलो', fort: 'तीन सैनिक ऊपर · तीरंदाज़ भेजो · टावर बनाओ · हमला', mantra: 'असुर पर लिखा मंत्र बोलो · ढाल · शांति · जीवन' };
   btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
   btn.addEventListener('touchstart', function (e) { e.stopPropagation(); }, { passive: true });
   btn.addEventListener('click', function (e) { e.stopPropagation(); on = !on; btn.classList.toggle('on', on); if (on) { if (!SR) { flash('यहाँ बोलकर खेलना संभव नहीं (Chrome में खोलो)'); on = false; btn.classList.remove('on'); hud(); return; } startRec(); flash('बोलो: ' + (HELP[GAME] || HELP.contra)); if (window.Talk && Talk.setEnabled && Talk.enabled && !Talk.userSet) { Talk.setEnabled(false, true); setTimeout(function () { flash('किरदार चुप — 🗣 बटन से चालू करो'); }, 1500); } } else { stopRec(); A.strategy = 'idle'; A.fire = false; A.dodge = false; try { D.release(); } catch (x) {} } hud(); });

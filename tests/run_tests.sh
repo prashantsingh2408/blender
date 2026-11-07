@@ -10,4 +10,8 @@ run mantra_test.js 2
 run fort_test.js 2
 run arena2_test.js 3
 run auto_test.js 1
+run cross_test.js 1
+run hunt_test.js 5
+run learn_test.js 5
+run pet_test.js 6
 [ $fail = 0 ] && echo "ALL SUITES PASS" || { echo "SOME SUITES FAILED"; exit 1; }

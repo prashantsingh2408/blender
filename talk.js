@@ -212,5 +212,5 @@
   };
   var watch = W[GAME]; if (watch) setInterval(function () { try { watch.call(watch); } catch (e) {} }, 150);
 
-  window.Talk = { setEnabled: setEnabled, setOpen: setOpen, get open() { return dock.classList.contains('open'); }, get enabled() { return charOn; }, get userSet() { return userSet; }, say: function (t) { say(C.name, t, true); }, event: function (ev) { line(ev, true); }, get mood() { return mood; }, get psych() { return psych; }, character: C, player: PID, players: PLAYERS, heard: heard, command: voiceCmd, commands: VOICE };
+  window.Talk = { get voiceOn() { return voiceOn; }, setEnabled: setEnabled, setOpen: setOpen, get open() { return dock.classList.contains('open'); }, get enabled() { return charOn; }, get userSet() { return userSet; }, say: function (t) { say(C.name, t, true); }, event: function (ev) { line(ev, true); }, get mood() { return mood; }, get psych() { return psych; }, character: C, player: PID, players: PLAYERS, heard: heard, command: voiceCmd, commands: VOICE };
 })();

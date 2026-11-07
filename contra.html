@@ -490,6 +490,7 @@ function fall(o, dt, ignoreThin) {
 
 // ============================================================ game state
 const G = { state: 'title', score: 0, lives: 3, time: 0, clearT: 0, godMode: false };
+let aimOverride = null;
 let player, fires = [], pBullets = [], eBullets = [], enemies = [], items = [], fx = [], spawns = [], spawnI = 0, bossTimer = 0;
 
 function newPlayer() {
@@ -622,7 +623,8 @@ function updatePlayer(dt) {
   let target = pa ? ptr.ang : keyAimTarget();
   if (pa && !p.prone && Math.abs(Math.cos(target)) > 0.12) p.dir = Math.cos(target) > 0 ? 1 : -1;
   if (p.prone) target = p.dir > 0 ? 0 : Math.PI;
-  p.aim = (ptr.touch || ptr.mouseDown) ? target : approachAngle(p.aim, target, (pa ? 32 : 16) * dt);
+  if (aimOverride != null) { target = aimOverride; }
+  p.aim = (ptr.touch || ptr.mouseDown || aimOverride != null) ? target : approachAngle(p.aim, target, (pa ? 32 : 16) * dt);
 
   // jump (somersault) or drop through a thin platform
   const H = hero();
@@ -1482,8 +1484,8 @@ function frame(now) {
   render(); requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__game = { G, get player() { return player; }, get cam() { return cam; }, get enemies() { return enemies; }, get pBullets() { return pBullets; }, get eBullets() { return eBullets; }, get surfaces() { return surfaces; }, keys };
+window.__game = { G, get player() { return player; }, get cam() { return cam; }, get enemies() { return enemies; }, get pBullets() { return pBullets; }, get eBullets() { return eBullets; }, get surfaces() { return surfaces; }, get VW() { return VW; }, get EXTRA() { return EXTRA; }, get canvas() { return cv; }, killEnemy, startBossDeath, addScore, keys, set aim(a) { aimOverride = a; }, get aim() { return aimOverride; } };
 try { drawFacePreview(); } catch (e) {}
 </script>
-<script src="land.js"></script><script src="talk.js" data-game="contra"></script><script src="agent.js" data-game="contra"></script></body>
+<script src="land.js"></script><script src="talk.js" data-game="contra"></script><script src="agent.js" data-game="contra"></script><script src="pet.js"></script></body>
 </html>

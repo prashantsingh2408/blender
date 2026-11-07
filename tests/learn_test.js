@@ -1,0 +1,12 @@
+const { chromium } = require('playwright');
+(async()=>{const b=await chromium.launch();const p=await (await b.newContext({viewport:{width:844,height:390}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));await p.route(/fonts\.g/,r=>r.abort());
+await p.addInitScript(()=>{window.__said=[];window.SpeechSynthesisUtterance=function(t){this.text=t;this.pitch=1};Object.defineProperty(window,'speechSynthesis',{value:{speak:u=>{window.__said.push(u.text);setTimeout(()=>u.onend&&u.onend(),20)},cancel(){}},writable:true,configurable:true});window.SpeechRecognition=window.webkitSpeechRecognition=function(){const r=this;window.__rec=r;r.start=()=>setTimeout(()=>r.onstart&&r.onstart(),10);r.stop=r.abort=()=>setTimeout(()=>r.onend&&r.onend(),10)}});
+await p.goto('file://'+process.cwd()+'/contra.html');await p.waitForTimeout(900);
+await p.click('.tk-tog');await p.click('.ag-btn');await p.waitForTimeout(200);
+const res=(t,f)=>p.evaluate(([t,f])=>__rec.onresult({resultIndex:0,results:[Object.assign([{transcript:t}],{isFinal:f})]}),[t,f]);
+await res('शुरू करो',true);await p.waitForTimeout(400);console.log('start reply:',await p.evaluate(()=>__said.slice(-1)));
+await res('चलो आगे बढ़ो',true);await p.waitForTimeout(400);console.log('advance reply:',await p.evaluate(()=>__said.slice(-1)),'strategy',await p.evaluate(()=>Agent.strategy));
+await res('झपट्टा मार',true);await p.waitForTimeout(400);console.log('unknown reply:',await p.evaluate(()=>__said.slice(-1)));
+await res('मारो',true);await p.waitForTimeout(500);console.log('after teaching:',await p.evaluate(()=>__said.slice(-2)),'learned',await p.evaluate(()=>localStorage.getItem('agent_learned_contra')));
+await res('झपट्टा मार',true);await p.waitForTimeout(300);console.log('learned phrase now parses to',JSON.stringify(await p.evaluate(()=>Agent.parse('झपट्टा मार'))),'burst',await p.evaluate(()=>Agent.state.burst>0||Agent.state.fire));
+console.log('errors',errs);await b.close()})();
