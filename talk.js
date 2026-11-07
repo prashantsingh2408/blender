@@ -39,6 +39,48 @@
   };
   var C = CH[GAME] || CH.generic;
 
+  /* ---------- AI players (chosen on the home page, follow you into every game) ---------- */
+  var PLAYERS = {
+    rocky: { name: 'रॉकी', title: 'स्ट्रीट किंग', color: '#ff5a5f', pitch: 0.85, temper: 1.4, angryAt: 25, nervousAt: 75, racer: 'rocky',
+      start: ['चल बे, दिखा क्या है तुझमें।', 'स्ट्रीट किंग आ गया। डरना मत।'],
+      kill: { confident: ['हम्म, एक गिरा। बस?', 'इतने में क्या होता है।'], angry: ['बस कर! मेरा दिमाग मत खा!', 'अब मैं भड़क गया!'], nervous: ['रुक... रुक जा भाई।', 'ये... ये क्या चल रहा है?'], respectful: ['बढ़िया, मानना पड़ेगा।'] },
+      died: { confident: ['हा हा! कहा था ना।', 'घर जा, सो जा।'], angry: ['यही होना था तेरे साथ!'], nervous: ['उफ़... चलो बचा मैं।'], respectful: ['उठ, फिर से। हिम्मत रख।'] },
+      boss: { confident: ['अब असली खेल।'], angry: ['आ गया! अब खैर नहीं!'], nervous: ['मत आ पास...'], respectful: ['यहाँ तक आया, मान गया।'] },
+      win: ['ठीक है... आज तू जीता।', 'किस्मत थी तेरी।'], lose: ['कहा था ना। किंग मैं हूँ।'],
+      reply: { taunt: { confident: ['बड़ी बातें। खेल कर दिखा।'], angry: ['मुँह बंद कर!', 'अब तेरी खैर नहीं!'], nervous: ['ठीक है... ठीक है...'], respectful: ['हा हा, मज़ाक अच्छा था।'] }, praise: ['हाँ हाँ, पता है मैं बेस्ट हूँ।'], bargain: ['किंग सौदे नहीं करता।'] } },
+    madam: { name: 'मैडम नाइट्रो', title: 'दिमागी खेल', color: '#8e24aa', pitch: 1.2, temper: 0.6, angryAt: 45, nervousAt: 85, racer: 'madam',
+      start: ['आराम से खेलो, डार्लिंग। मैं देख रही हूँ।', 'चलो, थोड़ा दिमागी खेल हो जाए।'],
+      kill: { confident: ['प्यारा। और?', 'हम्म, ठीक-ठाक।'], angry: ['अब मुझे चिढ़ हो रही है।'], nervous: ['ये... उम्मीद से बेहतर है।'], respectful: ['सुंदर। सच में।'] },
+      died: { confident: ['ओह। बेचारा।', 'मैंने कहा था, आराम से।'], angry: ['यही चाहिए था तुम्हें।'], nervous: ['उफ़, चलो बचे।'], respectful: ['होता है। फिर कोशिश।'] },
+      boss: { confident: ['अब मज़ा आएगा।'], angry: ['ख़त्म करती हूँ।'], nervous: ['संभल कर...'], respectful: ['यहाँ तक? वाह।'] },
+      win: ['ठीक है, आज तुम जीते। कल देखेंगे।'], lose: ['जैसा सोचा था।'],
+      reply: { taunt: { confident: ['बच्चों जैसी बातें।', 'इतनी मेहनत मुझे चिढ़ाने में?'], angry: ['बस। अब चुप।'], nervous: ['ठीक है, ठीक है।'], respectful: ['हा, अच्छा था।'] }, praise: ['जानती हूँ। धन्यवाद।'], bargain: ['सौदा? मेरे साथ? प्यारे हो।'] } },
+    bolt: { name: 'बोल्ट', title: 'नौसिखिया उस्ताद', color: '#1976d2', pitch: 1.35, temper: 1.0, angryAt: 40, nervousAt: 55, racer: 'bolt',
+      start: ['ह-हाय! मैं बोल्ट। तेज़ हूँ, पर... घबराता हूँ।', 'चलो चलो चलो!'],
+      kill: { confident: ['वाह! ठीक है!'], angry: ['अरे यार, बस करो ना!'], nervous: ['रुको रुको रुको!', 'मुझे... डर लग रहा है।'], respectful: ['तुम तो प्रो हो!'] },
+      died: { confident: ['ओह नो! ठीक हो?'], angry: ['हा! देखा!'], nervous: ['उफ़... मैं भी गिर जाता।'], respectful: ['कोई नहीं, फिर से!'] },
+      boss: { confident: ['बॉस! चलो!'], angry: ['अब मैं गुस्से में हूँ!'], nervous: ['म-मत जाओ पास!'], respectful: ['तुम कर लोगे!'] },
+      win: ['तुम जीते! वाह!'], lose: ['कोई बात नहीं, फिर खेलते हैं।'],
+      reply: { taunt: { confident: ['ऐसा मत बोलो ना!'], angry: ['बस! अब मैं नहीं डरूँगा!'], nervous: ['ओके ओके, सॉरी!'], respectful: ['हे हे, ठीक है।'] }, praise: ['सच में? थैंक यू!'], bargain: ['सौदा? मुझे नहीं पता ये कैसे होता है।'] } },
+    tapori: { name: 'अपुन टपोरी', title: 'मुंबई का बाप', color: '#ef6c00', pitch: 0.95, temper: 1.2, angryAt: 30, nervousAt: 70, racer: 'tapori',
+      start: ['ए बॉस, अपुन आ गया। खेल चालू कर।', 'क्या रे, तैयार है क्या?'],
+      kill: { confident: ['एक गया। बोले तो, मामूली।'], angry: ['ए! अपुन का भेजा मत घुमा!'], nervous: ['अरे रुक रे... जास्ती हो रहा है।'], respectful: ['झकास! मान गया बॉस।'] },
+      died: { confident: ['हा हा! खल्लास!', 'बोला था ना।'], angry: ['यही होना था रे!'], nervous: ['बच गया अपुन।'], respectful: ['उठ रे, फिर से मार।'] },
+      boss: { confident: ['अब असली लफड़ा।'], angry: ['आ गया! अभी बजाता हूँ!'], nervous: ['ए, इधर मत आ।'], respectful: ['इधर तक आया? सलाम।'] },
+      win: ['ठीक है रे, आज तू बाप।'], lose: ['बोला था ना, अपुन बाप है।'],
+      reply: { taunt: { confident: ['ए, बोलने से कुछ नहीं होता।'], angry: ['चुप रे! भेजा फ्राई मत कर!'], nervous: ['ठीक है रे, ठीक है।'], respectful: ['हा हा, मस्त बोला।'] }, praise: ['एकदम सही बोला। अपुन झकास है।'], bargain: ['सौदा? पैसा निकाल, फिर बात कर... मज़ाक रे।'] } },
+    champ: { name: 'चैम्पियन', title: 'लाइन की इज़्ज़त', color: '#3ddc97', pitch: 0.9, temper: 0.5, angryAt: 50, nervousAt: 90, racer: 'champ',
+      start: ['साफ़ खेलो। मैं साथ हूँ।', 'चलो, सीखते हैं।'],
+      kill: { confident: ['अच्छा। ध्यान बनाए रखो।'], angry: ['शांत रहो। गुस्से में गलती होती है।'], nervous: ['तेज़ हो तुम।'], respectful: ['शानदार। यही तरीका है।'] },
+      died: { confident: ['कोई बात नहीं। क्या सीखा?'], angry: ['जल्दबाज़ी मत करो।'], nervous: ['संभलो।'], respectful: ['उठो। चैम्पियन गिरकर उठते हैं।'] },
+      boss: { confident: ['अब असली परीक्षा।'], angry: ['ध्यान से।'], nervous: ['मैं हूँ।'], respectful: ['तुम तैयार हो।'] },
+      win: ['बधाई। कमाई हुई जीत।'], lose: ['हार से सीखो। फिर आओ।'],
+      reply: { taunt: { confident: ['शब्द नहीं, खेल बोलता है।'], angry: ['बस। इज़्ज़त से बात करो।'], nervous: ['ठीक है।'], respectful: ['हा, ठीक है दोस्त।'] }, praise: ['धन्यवाद। अब खेल पर ध्यान।'], bargain: ['जीत खरीदी नहीं जाती।'] } }
+  };
+  var PID = null; try { PID = localStorage.getItem('genai_player'); } catch (e) {}
+  var P = PID && PLAYERS[PID];
+  if (P) { var base = C; C = {}; for (var k in base) C[k] = base[k]; for (var k2 in P) C[k2] = P[k2]; C.game = base; }
+
   /* replies to what the player says */
   var REPLY = {
     taunt: { confident: ['बड़ी-बड़ी बातें। खेल कर दिखाओ।', 'बोलने से नहीं होता।'], angry: ['मुँह बंद रखो!', 'अब तुम्हारी खैर नहीं!'], nervous: ['ठीक है... ठीक है...', 'इतना गुस्सा क्यों?'], respectful: ['हा हा, मज़ाक अच्छा था।'] },
@@ -54,7 +96,8 @@
   /* ---------- state ---------- */
   var mood = 'confident', psych = 0, lastEv = 0, voiceOn = true, speaking = false, listening = false, rec = null, SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var MOODHI = { confident: 'आत्मविश्वास', angry: 'गुस्से में', nervous: 'घबराया', respectful: 'इज़्ज़त' };
-  function recalc() { if (psych >= 70) mood = 'nervous'; else if (psych >= 35) mood = 'angry'; else if (mood === 'nervous' || mood === 'angry') mood = 'confident'; chip.textContent = C.name + ': ' + MOODHI[mood]; chip.className = 'tk-chip ' + mood; }
+  var ANGRY_AT = C.angryAt || 35, NERV_AT = C.nervousAt || 70, TEMPER = C.temper || 1;
+  function recalc() { if (psych >= NERV_AT) mood = 'nervous'; else if (psych >= ANGRY_AT) mood = 'angry'; else if (mood === 'nervous' || mood === 'angry') mood = 'confident'; chip.textContent = C.name + ': ' + MOODHI[mood]; chip.className = 'tk-chip ' + mood; }
 
   /* ---------- UI ---------- */
   var css = document.createElement('style');
@@ -76,7 +119,7 @@
   var bubT = null;
   function say(who, text, isBoss) { bub.innerHTML = '<b></b><span></span>'; bub.children[0].textContent = who; bub.children[1].textContent = text; bub.className = 'tk-bub on' + (isBoss ? '' : ' you'); clearTimeout(bubT); bubT = setTimeout(function () { bub.classList.remove('on'); }, isBoss ? 4200 : 2500); if (isBoss) speak(text); }
   function speak(t) { if (!voiceOn || !window.speechSynthesis) return; try { var u = new SpeechSynthesisUtterance(t); u.lang = 'hi-IN'; u.pitch = C.pitch || 1; u.rate = 1; speaking = true; u.onend = u.onerror = function () { speaking = false; }; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { speaking = false; } }
-  function line(ev, force) { var now = Date.now(); if (!force && now - lastEv < 3500) return; lastEv = now; var L = C[ev]; if (!L) return; var arr = Array.isArray(L) ? L : (L[mood] || L.confident); say(C.name, pick(arr), true); }
+  function line(ev, force) { var now = Date.now(); if (!force && now - lastEv < 3500) return; lastEv = now; var L = C[ev] || (C.game && C.game[ev]); if (!L) return; var arr = Array.isArray(L) ? L : (L[mood] || L.confident); say(C.name, pick(arr), true); }
 
   /* ---------- player speech ---------- */
   function setMic(on) { listening = on; mic.classList.toggle('live', on); mic.lastChild.textContent = on ? 'सुन रहा हूँ…' : 'बोलो'; }
@@ -98,9 +141,10 @@
     if (/start|go|again|फिर|दोबारा|शुरू|चलो|स्टार्ट|खेलो/.test(l)) { var ev = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }); window.dispatchEvent(ev); document.dispatchEvent(ev); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true })); }
     say('तुम', t, false);
     var k = classify(t);
-    if (k === 'taunt') { psych = Math.min(100, psych + 30); recalc(); setTimeout(function () { say(C.name, pick(REPLY.taunt[mood]), true); }, 700); }
-    else if (k === 'praise') { psych = Math.max(0, psych - 25); mood = 'respectful'; recalc(); mood = 'respectful'; chip.textContent = C.name + ': ' + MOODHI.respectful; chip.className = 'tk-chip respectful'; setTimeout(function () { say(C.name, pick(REPLY.praise), true); }, 700); }
-    else setTimeout(function () { say(C.name, pick(REPLY[k]), true); }, 700);
+    var R = C.reply || REPLY;
+    if (k === 'taunt') { psych = Math.min(100, psych + 30 * TEMPER); recalc(); setTimeout(function () { say(C.name, pick((R.taunt && R.taunt[mood]) || REPLY.taunt[mood]), true); }, 700); }
+    else if (k === 'praise') { psych = Math.max(0, psych - 25); mood = 'respectful'; chip.textContent = C.name + ': ' + MOODHI.respectful; chip.className = 'tk-chip respectful'; setTimeout(function () { say(C.name, pick(R.praise || REPLY.praise), true); }, 700); }
+    else setTimeout(function () { say(C.name, pick(R[k] || REPLY[k]), true); }, 700);
   }
   mic.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
   mic.addEventListener('touchstart', function (e) { e.stopPropagation(); }, { passive: true });
@@ -118,5 +162,5 @@
   };
   var watch = W[GAME]; if (watch) setInterval(function () { try { watch.call(watch); } catch (e) {} }, 150);
 
-  window.Talk = { say: function (t) { say(C.name, t, true); }, event: function (ev) { line(ev, true); }, get mood() { return mood; }, get psych() { return psych; }, character: C, heard: heard };
+  window.Talk = { say: function (t) { say(C.name, t, true); }, event: function (ev) { line(ev, true); }, get mood() { return mood; }, get psych() { return psych; }, character: C, player: PID, players: PLAYERS, heard: heard };
 })();
