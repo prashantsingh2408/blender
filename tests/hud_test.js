@@ -1,0 +1,22 @@
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+  const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  await page.route(/fonts\.g|unpkg|peerjs/, r => r.abort());
+  await page.goto('file://' + process.cwd() + '/contra.html#god'); await page.waitForTimeout(800);
+  await page.keyboard.press('Enter'); await page.waitForTimeout(400);
+  const dock = () => page.evaluate(() => { const d = document.querySelector('.tk-dock'); const s = getComputedStyle(d); return [s.display, s.visibility, +s.opacity]; });
+  const labels = await page.evaluate(() => [...document.querySelectorAll('.tk-btn span')].map(s => s.textContent));
+  const open0 = await dock();
+  await page.click('#cfgBtn'); const inSettings = await dock();
+  await page.click('#stabs button[data-tab=controls]');
+  await page.$eval('#o_vbar', e => { e.value = 30; e.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.$eval('#o_padA', e => { e.value = 0; e.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.click('#o_close'); await page.waitForTimeout(200);
+  const faint = await dock(); const pad = await page.evaluate(() => +getComputedStyle(document.getElementById('pad')).opacity);
+  await page.click('#cfgBtn'); await page.$eval('#o_vbar', e => { e.value = 0; e.dispatchEvent(new Event('change', { bubbles: true })); }); await page.click('#o_close');
+  const gone = await dock();
+  console.log(JSON.stringify({ labels, open0, inSettings, faint, pad, gone, errs }));
+  const ok = labels.join().includes('Chat') && labels.join().includes('Control') && open0[0] !== 'none' && inSettings[0] === 'none' && faint[2] === 0.3 && pad === 0 && gone[1] === 'hidden' && !errs.length;
+  console.log(ok ? 'HUD PASS' : 'HUD FAIL'); await b.close(); process.exit(ok ? 0 : 1);
+})();

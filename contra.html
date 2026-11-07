@@ -67,6 +67,10 @@
   #settings label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:9px 0}
   #settings select,#settings input[type=range]{min-width:150px;padding:5px;background:#0d1117;color:#fff;border:1px solid #3a4652;border-radius:6px}
   body.nopet #petcv{display:none !important}
+  .tk-dock,.ag-hud,.ag-fl,.tk-bub,.tk-heard,.ag-menu{opacity:var(--vb,1) !important}
+  body.vb0 .tk-dock,body.vb0 .ag-hud,body.vb0 .ag-fl,body.vb0 .tk-bub,body.vb0 .tk-heard,body.vb0 .ag-menu{visibility:hidden !important}
+  #pad{opacity:var(--pa,1)}
+  body.set-open .tk-dock,body.set-open .ag-hud,body.set-open .ag-fl,body.set-open .tk-bub,body.set-open .tk-heard,body.set-open .ag-menu,body.set-open #worldToast{display:none !important}
   #stabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   #stabs button{flex:1;min-width:64px;padding:9px 6px;border-radius:8px;border:1px solid #3a4652;background:#1f2a36;color:#cfd8e0;font-weight:bold;font-size:13px;cursor:pointer}
   #stabs button.cur{background:#f59e0b;color:#0f172a;border-color:#f59e0b}
@@ -139,6 +143,10 @@
   <label>Hold to auto-fire<select id="o_hold"><option value="1">On</option><option value="0">Off (tap to fire)</option></select></label>
   <label>Laser sight<select id="o_laser"><option value="1">On</option><option value="0">Off</option></select></label>
   <label>Button size<select id="o_size"><option value="0.8">Small</option><option value="1">Medium</option><option value="1.25">Large</option></select></label>
+  <label>Voice bar visibility<input type="range" id="o_vbar" min="0" max="100" step="10"></label>
+  <div class="hint">How solid the top voice bar and status text are. 0 hides them completely.</div>
+  <label>Touch controls visibility<input type="range" id="o_padA" min="0" max="100" step="10"></label>
+  <div class="hint">How solid the on-screen sticks and buttons are. 0 makes them invisible but they still work.</div>
   <h2 style="margin-top:14px">Voice test</h2>
   <div class="hint">Check that the phone hears you. Tap, allow the microphone, then say something like &ldquo;aage badho&rdquo; or &ldquo;fire&rdquo;.</div>
   <div class="row"><button id="vt_mic">&#127908; Test microphone</button><button id="vt_spk">&#128266; Test speaker</button></div>
@@ -255,7 +263,7 @@ addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (!k) return; e.pre
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 // ---- settings (persisted) --------------------------------------------------
-const DEF_CFG = { move: 'twin', aim: 'touch', hold: 1, laser: 1, speed: 80, size: 1, tall: 1, bg: 'auto', level: 'jungle', lives: 0, chargeMode: 'hold', power: 75, tune: {}, zone: 'bottom', pet: 1, hero: 'commando', face: 'vector', hairStyle: 'quiff', hair: '#1a1512', skin: '#c58a62', beard: 'stubble', bandana: 1, shirt: '#c6392b', pants: '#2b4fd6', band: '#e01818', v: 3 };
+const DEF_CFG = { move: 'twin', aim: 'touch', hold: 1, laser: 1, speed: 80, size: 1, tall: 1, bg: 'auto', level: 'jungle', lives: 0, chargeMode: 'hold', power: 75, tune: {}, zone: 'bottom', pet: 1, vbar: 100, padA: 100, hero: 'commando', face: 'vector', hairStyle: 'quiff', hair: '#1a1512', skin: '#c58a62', beard: 'stubble', bandana: 1, shirt: '#c6392b', pants: '#2b4fd6', band: '#e01818', v: 3 };
 let cfg = { ...DEF_CFG };
 try { const sv = JSON.parse(localStorage.getItem('jc_cfg') || '{}'); if (sv.v !== 3) { delete sv.aim; } Object.assign(cfg, sv); cfg.v = 3; if (!cfg.tune || typeof cfg.tune !== 'object') cfg.tune = {}; } catch (e) {}
 const HEROES = {
@@ -289,6 +297,8 @@ $('faceFile').addEventListener('change', e => { const f = e.target.files[0]; if 
 var lastHero = null;
 function applyCfg() {
   document.body.classList.toggle('nopet', !cfg.pet);
+  document.documentElement.style.setProperty('--vb', (cfg.vbar == null ? 100 : cfg.vbar) / 100); document.documentElement.style.setProperty('--pa', (cfg.padA == null ? 100 : cfg.padA) / 100);
+  document.body.classList.toggle('vb0', +cfg.vbar === 0);
   autoRun = isTouch && (cfg.move === 'auto' || cfg.move === 'minimal');
   document.documentElement.style.setProperty('--bs', cfg.size);
   $('stop').style.display = $('back').style.display = cfg.move === 'auto' ? 'flex' : 'none';
@@ -328,31 +338,33 @@ function applyCfg() {
     if (busy) return; busy = true; lines().innerHTML = ''; $('vtBar').style.width = '0';
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const wasOn = !!(window.Agent && Agent.listening); if (wasOn) { try { Agent.listen(false); } catch (e) {} }
-    let stream = null, ctx = null, peak = 0, heard = '', err = '', raf = 0, rec = null, done = false;
-    const finish = () => {
-      if (done) return; done = true; cancelAnimationFrame(raf);
-      try { rec && rec.stop(); } catch (e) {} try { stream && stream.getTracks().forEach(t => t.stop()); } catch (e) {} try { ctx && ctx.close(); } catch (e) {}
-      say(peak > 0.12 ? '✅ Microphone level: good (' + Math.round(peak * 100) + '%).' : peak > 0.03 ? '⚠ Microphone is very quiet (' + Math.round(peak * 100) + '%). Speak louder or closer.' : '❌ Microphone heard almost nothing. Check the permission and that no other app is using it.', peak > 0.12 ? '#4ade80' : peak > 0.03 ? '#fbbf24' : '#f87171');
-      if (!SR) say('❌ Speech recognition is not supported here. Use Chrome on Android or desktop.', '#f87171');
-      else if (heard) say('✅ Recognised: “' + heard + '”', '#4ade80');
-      else say(err ? '❌ Recognition error: ' + err + ({ 'not-allowed': ' (microphone permission blocked)', 'no-speech': ' (heard silence, try again louder)', 'audio-capture': ' (no microphone found or it is busy)', network: ' (speech service needs internet)', aborted: ' (stopped early)' }[err] || '') : '❌ Nothing was recognised. Try again and speak clearly.', '#f87171');
-      if (wasOn) { try { Agent.listen(true); } catch (e) {} }
-      busy = false;
-    };
+    const restore = () => { if (wasOn) { try { Agent.listen(true); } catch (e) {} } busy = false; };
+    // step 1: microphone level only (the recogniser must not share the mic, phones give it silence)
+    let peak = 0;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      ctx = new (window.AudioContext || window.webkitAudioContext)(); const an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(stream).connect(an);
-      const buf = new Uint8Array(an.fftSize);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const ctx = new (window.AudioContext || window.webkitAudioContext)(); const an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(stream).connect(an);
+      const buf = new Uint8Array(an.fftSize); let raf = 0;
       const loop = () => { an.getByteTimeDomainData(buf); let m = 0; for (const v of buf) m = Math.max(m, Math.abs(v - 128) / 128); peak = Math.max(peak, m); $('vtBar').style.width = Math.min(100, Math.round(m * 140)) + '%'; raf = requestAnimationFrame(loop); };
-      loop(); say('\u{1F3A4} Listening for 6 seconds… say something now.');
-    } catch (e) { say('❌ Microphone: ' + (e && e.name || 'error') + (e && e.name === 'NotAllowedError' ? ' (permission blocked, allow the microphone for this site)' : ''), '#f87171'); peak = 0; if (wasOn) { try { Agent.listen(true); } catch (x) {} } busy = false; return; }
-    if (SR) {
-      try { rec = new SR(); rec.lang = 'hi-IN'; rec.interimResults = true; rec.continuous = true;
-        rec.onresult = ev => { let t = ''; for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript + ' '; heard = t.trim(); };
-        rec.onerror = ev => { err = ev.error || 'error'; };
-        rec.start(); } catch (e) { err = e.message; }
-    }
-    setTimeout(finish, 6000);
+      loop(); say('Step 1 of 2: microphone level. Say anything for 3 seconds…');
+      await new Promise(r => setTimeout(r, 3000));
+      cancelAnimationFrame(raf); stream.getTracks().forEach(t => t.stop()); try { await ctx.close(); } catch (e) {}
+    } catch (e) { say('❌ Microphone: ' + (e && e.name || 'error') + (e && e.name === 'NotAllowedError' ? ' (permission blocked, allow the microphone for this site)' : ''), '#f87171'); return restore(); }
+    say(peak > 0.12 ? '✅ Microphone level: good (' + Math.round(peak * 100) + '%).' : peak > 0.03 ? '⚠ Microphone is very quiet (' + Math.round(peak * 100) + '%). Speak louder or closer.' : '❌ Microphone heard almost nothing. Check the permission and that no other app is using it.', peak > 0.12 ? '#4ade80' : peak > 0.03 ? '#fbbf24' : '#f87171');
+    if (!SR) { say('❌ Speech recognition is not supported here. Use Chrome on Android or desktop.', '#f87171'); return restore(); }
+    // step 2: speech recognition alone
+    $('vtBar').style.width = '0'; say('Step 2 of 2: speech recognition. Now say “aage badho”…');
+    await new Promise(r => setTimeout(r, 400));
+    let heard = '', err = '', ended = false;
+    const rec = new SR(); rec.lang = 'hi-IN'; rec.interimResults = true; rec.continuous = false;
+    rec.onresult = ev => { let t = ''; for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript + ' '; heard = t.trim(); if (heard) say('… ' + heard, '#8fa3b5'); };
+    rec.onerror = ev => { err = ev.error || 'error'; };
+    const fin = () => { if (ended) return; ended = true; try { rec.stop(); } catch (e) {}
+      if (heard) say('✅ Recognised: “' + heard + '”', '#4ade80');
+      else say(err ? '❌ Recognition error: ' + err + ({ 'not-allowed': ' (microphone permission blocked)', 'no-speech': ' (heard silence, try again louder)', 'audio-capture': ' (no microphone found or it is busy)', network: ' (speech service needs internet)', aborted: ' (stopped early)', 'service-not-allowed': ' (speech service blocked on this browser)' }[err] || '') : '❌ Nothing was recognised although the microphone works. The speech service may be blocked or offline; try Chrome and check internet.', '#f87171');
+      restore(); };
+    rec.onend = fin; try { rec.start(); } catch (e) { err = e.message; return fin(); }
+    setTimeout(fin, 7000);
   });
 })();
 
@@ -367,7 +379,7 @@ function applyCfg() {
     if (player && WEAPONS[player.gun]) sel.value = player.gun;
   }
   $('s_gun').addEventListener('change', e => { if (player && WEAPONS[e.target.value]) { player.gun = e.target.value; player.charging = false; worldToast('Weapon: ' + WEAPONS[player.gun].name); } });
-  $('s_arsenal').addEventListener('click', () => { $('settings').style.display = 'none'; G.paused = false; openArsenal(); });
+  $('s_arsenal').addEventListener('click', () => { $('settings').style.display = 'none'; G.paused = false; document.body.classList.remove('set-open'); openArsenal(); });
   function jumpTo(kind) {
     if (!(G.state === 'play' && player && !player.dead)) return worldToast('Start the game first');
     if (LV.type === 'ride') return worldToast('Not in the plane ride');
@@ -381,15 +393,15 @@ function applyCfg() {
     cam = Math.max(0, Math.min(CAM_MAX, x - 100));
     Object.assign(player, { x: Math.max(cam + 12, x), y: s ? s.y : GROUND, vx: 0, vy: 0, onGround: true, jumping: false, inv: 1.5 });
     while (spawnI < spawns.length && spawns[spawnI].at < cam + VW) spawnI++;
-    pBullets = []; eBullets = []; $('settings').style.display = 'none'; G.paused = false; worldToast('Jumped: ' + label);
+    pBullets = []; eBullets = []; $('settings').style.display = 'none'; G.paused = false; document.body.classList.remove('set-open'); worldToast('Jumped: ' + label);
   }
   document.querySelectorAll('.dj').forEach(b => b.addEventListener('click', () => jumpTo(b.dataset.k)));
   $('cfgBtn').addEventListener('click', () => { let t = 'char'; try { t = localStorage.getItem('jc_tab') || 'char'; } catch (e) {} show(t); });
 })();
 for (const k in DEF_CFG) { const el = $('o_' + k); if (el) el.addEventListener('change', e => { const v = e.target.value; cfg[k] = (el.type === 'color' || isNaN(+v)) ? v : +v; applyCfg(); }); }
 $('o_reset').addEventListener('click', () => { cfg = { ...DEF_CFG }; applyCfg(); });
-$('cfgBtn').addEventListener('click', () => { $('settings').style.display = 'block'; G.paused = true; });
-$('o_close').addEventListener('click', () => { $('settings').style.display = 'none'; G.paused = false; });
+$('cfgBtn').addEventListener('click', () => { $('settings').style.display = 'block'; G.paused = true; document.body.classList.add('set-open'); });
+$('o_close').addEventListener('click', () => { $('settings').style.display = 'none'; G.paused = false; document.body.classList.remove('set-open'); });
 let wTab = 'soldier';
 function buildArsenal() {
   const tabs = $('wtabs'); tabs.innerHTML = '';
