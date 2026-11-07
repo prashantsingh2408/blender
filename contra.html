@@ -1482,8 +1482,8 @@ function frame(now) {
   render(); requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__game = { G, get player() { return player; }, get cam() { return cam; }, get enemies() { return enemies; }, get pBullets() { return pBullets; }, keys };
+window.__game = { G, get player() { return player; }, get cam() { return cam; }, get enemies() { return enemies; }, get pBullets() { return pBullets; }, get eBullets() { return eBullets; }, get surfaces() { return surfaces; }, keys };
 try { drawFacePreview(); } catch (e) {}
 </script>
-<script src="land.js"></script><script src="talk.js" data-game="contra"></script><script src="agent.js"></script></body>
+<script src="land.js"></script><script src="talk.js" data-game="contra"></script><script src="agent.js" data-game="contra"></script></body>
 </html>

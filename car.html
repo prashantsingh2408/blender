@@ -67,4 +67,4 @@ function car(){
 }
 var last=performance.now();(function loop(n){var dt=Math.min(.033,(n-last)/1000);last=n;step(dt);draw();requestAnimationFrame(loop)})(last);
 window.__car={get S(){return S},keys:keys,setGas:function(v){gas=v}};
-</script><script src="land.js"></script><script src="talk.js" data-game="car"></script></body></html>
+</script><script src="land.js"></script><script src="talk.js" data-game="car"></script><script src="agent.js" data-game="car"></script></body></html>

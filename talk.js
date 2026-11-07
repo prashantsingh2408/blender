@@ -38,6 +38,11 @@
       kill: { confident: ['दुश्मन गिरा।'], angry: ['और भेजो! कुचल दो!'], nervous: ['बच गए... अभी के लिए।'], respectful: ['बढ़िया चाल, सेनापति।'] },
       died: { confident: ['हमारा सैनिक गिरा। और भेजो।'], angry: ['बदला लो!'], nervous: ['किला... खतरे में है।'], respectful: ['हिम्मत रखो।'] },
       win: ['किला फ़तह! जय हो।'], lose: ['किला गिर गया। फिर से लड़ेंगे।'] },
+    mantra: { name: 'ऋषि', title: 'गुरु', color: '#a78bfa', pitch: 0.8,
+      start: ['मंत्र साफ़ बोलो, शिष्य। असुर आ रहे हैं।'],
+      kill: { confident: ['भस्म!', 'सही मंत्र।'], angry: ['और ज़ोर से बोलो!'], nervous: ['बहुत आ रहे हैं...'], respectful: ['वाह, सिद्ध मंत्र।'] },
+      died: { confident: ['ध्यान रखो, शिष्य।'], angry: ['मंत्र गलत था!'], nervous: ['संभलो!'], respectful: ['कोई बात नहीं, फिर।'] },
+      win: ['असुर हारे।'], lose: ['साधना अधूरी रही। फिर से।'] },
     generic: { name: 'बॉस', title: '', color: '#8e24aa', pitch: 1,
       start: ['चलो, खेल शुरू।'], kill: { confident: ['ठीक।'], angry: ['बस!'], nervous: ['रुक।'], respectful: ['बढ़िया।'] },
       died: { confident: ['हा!'], angry: ['यही होना था।'], nervous: ['उफ़।'], respectful: ['फिर कोशिश।'] }, win: ['जीत गए।'], lose: ['हार गए।'] }
@@ -110,19 +115,22 @@
     '.tk-bub{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9000;max-width:min(78vw,420px);background:rgba(16,32,43,.93);color:#fff;border-radius:12px;padding:8px 14px;font:600 15px system-ui,"Noto Sans Devanagari",sans-serif;line-height:1.3;display:none;box-shadow:0 4px 14px rgba(0,0,0,.4);pointer-events:none}.tk-bub.on{display:block}.tk-bub b{display:block;font-size:11px;letter-spacing:.08em;color:#ffd23f;margin-bottom:2px}.tk-bub.you{background:#3dd6f5;color:#10202b}.tk-bub.you b{color:#10202b}' +
     '.tk-chip{position:fixed;left:12px;top:calc(50% + 40px);z-index:9000;font:700 11px system-ui,"Noto Sans Devanagari",sans-serif;background:rgba(16,32,43,.85);color:#fff;padding:3px 9px;border-radius:12px;white-space:nowrap}.tk-chip.angry{color:#ff5a5f}.tk-chip.nervous{color:#ffd23f}.tk-chip.respectful{color:#3ddc97}' +
     '.tk-heard{position:fixed;left:84px;top:50%;transform:translateY(-50%);z-index:9000;max-width:50vw;font:600 13px system-ui,"Noto Sans Devanagari",sans-serif;background:rgba(16,32,43,.85);color:#fff;padding:5px 10px;border-radius:10px;display:none}.tk-heard.on{display:block}' +
-    '.tk-mute{position:fixed;left:12px;top:calc(50% - 60px);z-index:9000;border:0;border-radius:12px;background:rgba(16,32,43,.85);color:#fff;font:700 11px system-ui,sans-serif;padding:4px 9px;cursor:pointer}' +
-    '@media (max-aspect-ratio:1/1){.tk-mic{top:auto;bottom:88px;transform:none}.tk-mic.live{animation:none}.tk-chip{top:auto;bottom:66px}.tk-heard{top:auto;bottom:100px;transform:none}.tk-mute{top:auto;bottom:160px}}';
+    '.tk-char{top:calc(50% - 88px)!important}.tk-mute{position:fixed;left:12px;top:calc(50% - 60px);z-index:9000;border:0;border-radius:12px;background:rgba(16,32,43,.85);color:#fff;font:700 11px system-ui,sans-serif;padding:4px 9px;cursor:pointer}' +
+    '@media (max-aspect-ratio:1/1){.tk-mic{top:auto;bottom:88px;transform:none}.tk-mic.live{animation:none}.tk-chip{top:auto;bottom:66px}.tk-heard{top:auto;bottom:100px;transform:none}.tk-mute{top:auto;bottom:160px}.tk-char{top:auto!important;bottom:188px!important}}';
   document.head.appendChild(css);
   var mic = document.createElement('button'); mic.className = 'tk-mic'; mic.setAttribute('aria-label', 'बोलने के लिए दबाओ'); mic.innerHTML = '<i>🎤</i><span>बोलो</span>';
   var bub = document.createElement('div'); bub.className = 'tk-bub'; bub.setAttribute('aria-live', 'polite');
   var chip = document.createElement('div'); chip.className = 'tk-chip';
   var heardEl = document.createElement('div'); heardEl.className = 'tk-heard';
   var mute = document.createElement('button'); mute.className = 'tk-mute'; mute.textContent = '🔊 आवाज़'; mute.setAttribute('aria-pressed', 'true');
-  function mount() { [mic, bub, chip, heardEl, mute].forEach(function (e) { document.body.appendChild(e); }); recalc(); }
+  var charOn = true, userSet = false; var chb = document.createElement('button'); chb.className = 'tk-mute tk-char'; chb.setAttribute('aria-pressed', 'true');
+  function setEnabled(v, auto) { charOn = !!v; if (!auto) userSet = true; chb.textContent = (charOn ? '🗣 ' : '🚫 ') + C.name; chb.setAttribute('aria-pressed', String(charOn)); chip.style.display = charOn ? '' : 'none'; if (!charOn) { bub.classList.remove('on'); try { speechSynthesis.cancel(); } catch (e) {} } }
+  chb.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); chb.addEventListener('click', function (e) { e.stopPropagation(); setEnabled(!charOn); });
+  function mount() { [mic, bub, chip, heardEl, mute, chb].forEach(function (e) { document.body.appendChild(e); }); recalc(); setEnabled(true, true); }
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
   var bubT = null;
-  function say(who, text, isBoss) { bub.innerHTML = '<b></b><span></span>'; bub.children[0].textContent = who; bub.children[1].textContent = text; bub.className = 'tk-bub on' + (isBoss ? '' : ' you'); clearTimeout(bubT); bubT = setTimeout(function () { bub.classList.remove('on'); }, isBoss ? 4200 : 2500); if (isBoss) speak(text); }
+  function say(who, text, isBoss) { if (isBoss && !charOn) return; bub.innerHTML = '<b></b><span></span>'; bub.children[0].textContent = who; bub.children[1].textContent = text; bub.className = 'tk-bub on' + (isBoss ? '' : ' you'); clearTimeout(bubT); bubT = setTimeout(function () { bub.classList.remove('on'); }, isBoss ? 4200 : 2500); if (isBoss) speak(text); }
   function speak(t) { if (!voiceOn || !window.speechSynthesis) return; try { var u = new SpeechSynthesisUtterance(t); u.lang = 'hi-IN'; u.pitch = C.pitch || 1; u.rate = 1; speaking = true; u.onend = u.onerror = function () { speaking = false; }; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { speaking = false; } }
   function line(ev, force) { var now = Date.now(); if (!force && now - lastEv < 3500) return; lastEv = now; var L = C[ev] || (C.game && C.game[ev]); if (!L) return; var arr = Array.isArray(L) ? L : (L[mood] || L.confident); say(C.name, pick(arr), true); }
 
@@ -186,9 +194,10 @@
     car: function () { var c = window.__car; if (!c || !c.S) return; var S = c.S, p = this.p || (this.p = { said: false }); if (!p.said && S.t > 0.5) { p.said = true; line('start', true); } if (S.dead && !p.dead) line('died', true); if (!S.dead && p.dead) { p.said = false; p.far = 0; } p.dead = S.dead; if (p.coins !== undefined && S.coins > p.coins) line('kill'); p.coins = S.coins; var f = Math.floor(S.dist / 400); if (f > (p.far || 0)) { p.far = f; line('far'); } },
     iso: function () { var i = window.__iso; if (!i || !i.S) return; var S = i.S, p = this.p || (this.p = { said: false }); if (!p.said) { p.said = true; line('start', true); } var d = (S.g || []).filter(function (x) { return x.dead; }).length; if (p.d !== undefined && d > p.d) line('kill', true); p.d = d; if (S.over && S.over !== p.over) { if (S.over === 'win') line('win', true); else { line('died', true); } } if (!S.over && p.over) { p.d = 0; } p.over = S.over; },
     fort: function () { var f = window.__fort; if (!f || !f.S) return; var S = f.S, p = this.p || (this.p = { said: false }); if (!p.said) { p.said = true; line('start', true); } var mine = S.units.filter(function (u) { return u.side === 1; }).length, theirs = S.units.filter(function (u) { return u.side === -1; }).length; if (p.theirs !== undefined && theirs < p.theirs && !S.over) line('kill'); if (p.mine !== undefined && mine < p.mine && !S.over) line('died'); p.mine = mine; p.theirs = theirs; if (S.over && S.over !== p.over) line(S.over, true); if (!S.over) p.over = null; else p.over = S.over; },
+    mantra: function () { var m = window.__mantra; if (!m || !m.S) return; var S = m.S, p = this.p || (this.p = {}); if (p.kills !== undefined && S.kills > p.kills) line('kill'); p.kills = S.kills; if (p.hp !== undefined && S.hp < p.hp && S.hp > 0) line('died', true); p.hp = S.hp; },
     arena: function () { var a = window.__arena; if (!a || !a.snap) return; var s = a.snap, p = this.p || (this.p = { said: false }); if (!p.said) { p.said = true; line('start', true); } var mine = (s.p || []).filter(function (q) { return q[0] === a.myId; })[0]; if (mine) { var dead = mine[12] > 0; if (dead && !p.dead) line('died', true); p.dead = dead; } var n = (s.ev || []).length; if (p.n !== undefined && n > p.n) line('kill'); p.n = n; }
   };
   var watch = W[GAME]; if (watch) setInterval(function () { try { watch.call(watch); } catch (e) {} }, 150);
 
-  window.Talk = { say: function (t) { say(C.name, t, true); }, event: function (ev) { line(ev, true); }, get mood() { return mood; }, get psych() { return psych; }, character: C, player: PID, players: PLAYERS, heard: heard, command: voiceCmd, commands: VOICE };
+  window.Talk = { setEnabled: setEnabled, get enabled() { return charOn; }, get userSet() { return userSet; }, say: function (t) { say(C.name, t, true); }, event: function (ev) { line(ev, true); }, get mood() { return mood; }, get psych() { return psych; }, character: C, player: PID, players: PLAYERS, heard: heard, command: voiceCmd, commands: VOICE };
 })();
