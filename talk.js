@@ -111,22 +111,26 @@
 
   /* ---------- UI ---------- */
   var css = document.createElement('style');
-  css.textContent = '.tk-mic{position:fixed;left:12px;top:50%;transform:translateY(-50%);z-index:9000;width:64px;height:64px;border-radius:50%;border:0;background:#ffd23f;color:#10202b;font:700 11px system-ui,"Noto Sans Devanagari",sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 4px 14px rgba(0,0,0,.45);cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}.tk-mic i{font-style:normal;font-size:26px;line-height:1}.tk-mic.live{background:#ff5a5f;color:#fff;animation:tkp 1s ease-in-out infinite}@keyframes tkp{50%{transform:translateY(-50%) scale(1.1)}}.tk-mic.off{opacity:.45}' +
-    '.tk-bub{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9000;max-width:min(78vw,420px);background:rgba(16,32,43,.93);color:#fff;border-radius:12px;padding:8px 14px;font:600 15px system-ui,"Noto Sans Devanagari",sans-serif;line-height:1.3;display:none;box-shadow:0 4px 14px rgba(0,0,0,.4);pointer-events:none}.tk-bub.on{display:block}.tk-bub b{display:block;font-size:11px;letter-spacing:.08em;color:#ffd23f;margin-bottom:2px}.tk-bub.you{background:#3dd6f5;color:#10202b}.tk-bub.you b{color:#10202b}' +
-    '.tk-chip{position:fixed;left:12px;top:calc(50% + 40px);z-index:9000;font:700 11px system-ui,"Noto Sans Devanagari",sans-serif;background:rgba(16,32,43,.85);color:#fff;padding:3px 9px;border-radius:12px;white-space:nowrap}.tk-chip.angry{color:#ff5a5f}.tk-chip.nervous{color:#ffd23f}.tk-chip.respectful{color:#3ddc97}' +
-    '.tk-heard{position:fixed;left:84px;top:50%;transform:translateY(-50%);z-index:9000;max-width:50vw;font:600 13px system-ui,"Noto Sans Devanagari",sans-serif;background:rgba(16,32,43,.85);color:#fff;padding:5px 10px;border-radius:10px;display:none}.tk-heard.on{display:block}' +
-    '.tk-char{top:calc(50% - 88px)!important}.tk-mute{position:fixed;left:12px;top:calc(50% - 60px);z-index:9000;border:0;border-radius:12px;background:rgba(16,32,43,.85);color:#fff;font:700 11px system-ui,sans-serif;padding:4px 9px;cursor:pointer}' +
-    '@media (max-aspect-ratio:1/1){.tk-mic{top:auto;bottom:88px;transform:none}.tk-mic.live{animation:none}.tk-chip{top:auto;bottom:66px}.tk-heard{top:auto;bottom:100px;transform:none}.tk-mute{top:auto;bottom:160px}.tk-char{top:auto!important;bottom:188px!important}}';
+  css.textContent = '.tk-dock{position:fixed;left:10px;top:50%;transform:translateY(-50%);z-index:9000;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px;background:rgba(15,23,42,.84);border:1px solid rgba(255,255,255,.12);border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}' +
+    '.tk-btn{width:48px;height:48px;border-radius:50%;border:0;padding:0;background:#1e293b;color:#f8fafc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font:700 9px/1 system-ui,"Noto Sans Devanagari",sans-serif;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;transition:background .15s,transform .08s,opacity .15s}.tk-btn i{font-style:normal;font-size:20px;line-height:1}.tk-btn span{display:block;max-width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tk-btn:active{transform:scale(.93)}' +
+    '.tk-mic{background:#f59e0b;color:#0f172a}.tk-mic.live{background:#ef4444;color:#fff;animation:tkp 1s ease-in-out infinite}@keyframes tkp{50%{box-shadow:0 0 0 7px rgba(239,68,68,.28)}}.tk-mic.off{opacity:.45}' +
+    '.tk-char.off,.tk-mute.off{opacity:.5}.ag-btn.on{background:#22c55e;color:#0f172a;animation:agp 1.2s ease-in-out infinite}@keyframes agp{50%{box-shadow:0 0 0 7px rgba(34,197,94,.28)}}' +
+    '.tk-chip{font:700 10px/1.2 system-ui,"Noto Sans Devanagari",sans-serif;color:#cbd5e1;max-width:60px;text-align:center;padding:2px 0 1px}.tk-chip.angry{color:#f87171}.tk-chip.nervous{color:#fbbf24}.tk-chip.respectful{color:#4ade80}' +
+    '.tk-heard{position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);max-width:52vw;font:600 13px system-ui,"Noto Sans Devanagari",sans-serif;background:rgba(15,23,42,.9);color:#fff;padding:6px 10px;border-radius:10px;display:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tk-heard.on{display:block}' +
+    '.tk-bub{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:9000;max-width:min(78vw,420px);background:rgba(15,23,42,.93);color:#fff;border-radius:12px;padding:8px 14px;font:600 15px system-ui,"Noto Sans Devanagari",sans-serif;line-height:1.3;display:none;box-shadow:0 4px 14px rgba(0,0,0,.4);pointer-events:none}.tk-bub.on{display:block}.tk-bub b{display:block;font-size:11px;letter-spacing:.08em;color:#fbbf24;margin-bottom:2px}.tk-bub.you{background:#38bdf8;color:#0f172a}.tk-bub.you b{color:#0f172a}' +
+    '@media (max-aspect-ratio:1/1){.tk-dock{top:auto;bottom:var(--dock-bottom,96px);transform:none}.tk-heard{top:auto;bottom:0;transform:none}}';
   document.head.appendChild(css);
-  var mic = document.createElement('button'); mic.className = 'tk-mic'; mic.setAttribute('aria-label', 'बोलने के लिए दबाओ'); mic.innerHTML = '<i>🎤</i><span>बोलो</span>';
+  var dock = document.createElement('div'); dock.className = 'tk-dock'; dock.setAttribute('role', 'toolbar'); dock.setAttribute('aria-label', 'आवाज़');
+  function mkBtn(cls, icon, label, aria) { var b = document.createElement('button'); b.className = 'tk-btn ' + cls; b.setAttribute('aria-label', aria || label); b.innerHTML = '<i></i><span></span>'; b.children[0].textContent = icon; b.children[1].textContent = label; b.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); b.addEventListener('touchstart', function (e) { e.stopPropagation(); }, { passive: true }); return b; }
+  var mic = mkBtn('tk-mic', '🎤', 'बोलो', 'बोलने के लिए दबाओ');
   var bub = document.createElement('div'); bub.className = 'tk-bub'; bub.setAttribute('aria-live', 'polite');
   var chip = document.createElement('div'); chip.className = 'tk-chip';
   var heardEl = document.createElement('div'); heardEl.className = 'tk-heard';
-  var mute = document.createElement('button'); mute.className = 'tk-mute'; mute.textContent = '🔊 आवाज़'; mute.setAttribute('aria-pressed', 'true');
-  var charOn = true, userSet = false; var chb = document.createElement('button'); chb.className = 'tk-mute tk-char'; chb.setAttribute('aria-pressed', 'true');
-  function setEnabled(v, auto) { charOn = !!v; if (!auto) userSet = true; chb.textContent = (charOn ? '🗣 ' : '🚫 ') + C.name; chb.setAttribute('aria-pressed', String(charOn)); chip.style.display = charOn ? '' : 'none'; if (!charOn) { bub.classList.remove('on'); try { speechSynthesis.cancel(); } catch (e) {} } }
-  chb.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); chb.addEventListener('click', function (e) { e.stopPropagation(); setEnabled(!charOn); });
-  function mount() { [mic, bub, chip, heardEl, mute, chb].forEach(function (e) { document.body.appendChild(e); }); recalc(); setEnabled(true, true); }
+  var mute = mkBtn('tk-mute', '🔊', 'आवाज़', 'आवाज़ चालू/बंद'); mute.setAttribute('aria-pressed', 'true');
+  var charOn = true, userSet = false; var chb = mkBtn('tk-char', '🗣', C.name, 'किरदार चालू/बंद'); chb.setAttribute('aria-pressed', 'true');
+  function setEnabled(v, auto) { charOn = !!v; if (!auto) userSet = true; chb.classList.toggle('off', !charOn); chb.children[0].textContent = charOn ? '🗣' : '🚫'; chb.setAttribute('aria-pressed', String(charOn)); chip.style.display = charOn ? '' : 'none'; if (!charOn) { bub.classList.remove('on'); try { speechSynthesis.cancel(); } catch (e) {} } }
+  chb.addEventListener('click', function (e) { e.stopPropagation(); setEnabled(!charOn); });
+  function mount() { dock.appendChild(mic); dock.appendChild(chb); dock.appendChild(mute); dock.appendChild(chip); dock.appendChild(heardEl); document.body.appendChild(dock); document.body.appendChild(bub); recalc(); setEnabled(true, true); }
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
   var bubT = null;
@@ -135,7 +139,7 @@
   function line(ev, force) { var now = Date.now(); if (!force && now - lastEv < 3500) return; lastEv = now; var L = C[ev] || (C.game && C.game[ev]); if (!L) return; var arr = Array.isArray(L) ? L : (L[mood] || L.confident); say(C.name, pick(arr), true); }
 
   /* ---------- player speech ---------- */
-  function setMic(on) { listening = on; mic.classList.toggle('live', on); mic.lastChild.textContent = on ? 'सुन रहा हूँ…' : 'बोलो'; }
+  function setMic(on) { listening = on; mic.classList.toggle('live', on); mic.children[1].textContent = on ? 'सुन रहा…' : 'बोलो'; }
   function heardShow(t) { heardEl.textContent = t; heardEl.classList.toggle('on', !!t); }
   var wd = null;
   function startListen() {
@@ -184,7 +188,7 @@
   mic.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
   mic.addEventListener('touchstart', function (e) { e.stopPropagation(); }, { passive: true });
   mic.addEventListener('click', function (e) { e.stopPropagation(); if (listening && rec) { try { rec.stop(); } catch (x) {} } else startListen(); });
-  mute.addEventListener('click', function (e) { e.stopPropagation(); voiceOn = !voiceOn; mute.textContent = voiceOn ? '🔊 आवाज़' : '🔇 चुप'; mute.setAttribute('aria-pressed', String(voiceOn)); mic.classList.toggle('off', !voiceOn); if (!voiceOn) try { speechSynthesis.cancel(); } catch (x) {} });
+  mute.addEventListener('click', function (e) { e.stopPropagation(); voiceOn = !voiceOn; mute.children[0].textContent = voiceOn ? '\uD83D\uDD0A' : '\uD83D\uDD07'; mute.children[1].textContent = voiceOn ? 'आवाज़' : 'चुप'; mute.classList.toggle('off', !voiceOn); mute.setAttribute('aria-pressed', String(voiceOn)); if (!voiceOn) try { speechSynthesis.cancel(); } catch (x) {} });
   addEventListener('keydown', function (e) { if ((e.key === 'm' || e.key === 'M') && !e.repeat) mic.click(); });
   setInterval(function () { psych = Math.max(0, psych - 0.8); if (psych < 35 && mood !== 'respectful') recalc(); }, 1000);
 
