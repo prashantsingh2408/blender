@@ -25,7 +25,7 @@ button.b.alt{background:#4ac0ff}button.b.dim{background:#33506b;color:#fff}
 <button class="b alt" id="host">HOST ONLINE ROOM</button>
 <div class="row" style="margin-top:8px"><input id="code" maxlength="4" placeholder="ROOM CODE" style="text-transform:uppercase"><button class="b dim" id="join">JOIN</button></div>
 <div id="st"></div></div></div>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" onerror="window.__nopeer=1"></script>
+<script async src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" onerror="window.__nopeer=1"></script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id), cv = $('c'), g = cv.getContext('2d');
@@ -108,7 +108,9 @@ function startHost(withNet) {
     sim.step(dt); accS += dt; if (accS > .045) { accS = 0; const s = sim.snap(); s.ping = 0; snapPush(s); for (const c of Object.values(conns)) c.send({ k: 'snap', s }); } }, 16);
 }
 function snapPush(s) { snap = s; snapT = performance.now(); s.ev.forEach(e => kills.unshift([e[0] + ' > ' + e[1], performance.now()])); kills = kills.slice(0, 4); }
+function waitPeer() { return new Promise(r => { let t = 0; const i = setInterval(() => { if (window.Peer || window.__nopeer || t++ > 80) { clearInterval(i); r(!!window.Peer); } }, 100); }); }
 async function hostRoom() {
+  st('Loading network...'); if (!(await waitPeer())) { st('Online rooms need internet (peerjs). Play vs bots instead.'); return; }
   st('Creating room...'); const code = Math.random().toString(36).slice(2, 6).toUpperCase(); roomCode = code;
   try { await transport().host(code, c => { const id = c.id || 'c' + Math.random(); c.onData = m => { if (m.k === 'join') { if (Object.keys(sim.p).filter(k => !sim.p[k].bot).length >= MAXP) return; Object.keys(sim.p).filter(k => sim.p[k].bot).slice(0, 1).forEach(k => sim.remove(k)); sim.add(id, String(m.name).slice(0, 12)); conns[id] = c; c.send({ k: 'hi', id }); } else if (m.k === 'in' && sim.p[id]) sim.p[id].in = m.i; else if (m.k === 'ping') c.send({ k: 'pong', t: m.t }); }; c.onClose = () => { sim.remove(id); delete conns[id]; }; }); }
   catch (e) { st('Could not create room (' + (e.type || e.message) + '). Check connection.'); return; }
@@ -116,6 +118,7 @@ async function hostRoom() {
 }
 async function joinRoom() {
   const code = $('code').value.trim().toUpperCase(); if (code.length < 4) { st('Enter the 4-letter room code'); return; }
+  st('Loading network...'); if (!(await waitPeer())) { st('Online rooms need internet (peerjs). Play vs bots instead.'); return; }
   st('Connecting...'); roomCode = code; myName = getName();
   try { const c = await transport().join(code); mode = 'client'; c.send({ k: 'join', name: myName }); c.onData = m => { if (m.k === 'hi') { myId = m.id; } else if (m.k === 'snap') snapPush(m.s); else if (m.k === 'pong') ping = Math.round(performance.now() - m.t); };
     c.onClose = () => { mode = null; $('menu').style.display = 'flex'; st('Host left the room'); };
