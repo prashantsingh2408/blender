@@ -1,0 +1,26 @@
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+  const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  await page.addInitScript(() => localStorage.setItem('jc_cfg', JSON.stringify({ v: 3, hero: 'megaman', lives: 1, aim: 'touch', move: 'twin' })));
+  await page.route(/fonts\.g|unpkg|peerjs/, r => r.abort());
+  await page.goto('file://' + process.cwd() + '/contra.html#god'); await page.waitForTimeout(700);
+  await page.keyboard.press('Enter'); await page.waitForTimeout(500);
+  const gun = await page.evaluate(() => __game.player.gun);
+  await page.keyboard.press('KeyX'); await page.waitForTimeout(250);
+  const tap = await page.evaluate(() => __game.pBullets.map(b => b.mb || 0));
+  await page.evaluate(() => { __game.pBullets.length = 0; __game.player.cd = 0; });
+  await page.keyboard.down('KeyX'); await page.waitForTimeout(900); await page.keyboard.up('KeyX'); await page.waitForTimeout(150);
+  const full = await page.evaluate(() => __game.pBullets.map(b => [b.mb || 0, !!b.pierce, b.dmg]));
+  await page.screenshot({ path: '../mega.png' });
+  await page.evaluate(() => { __game.pBullets.length = 0; __game.setGun('MT'); __game.player.cd = 0; __game.player.aim = 0.3; });
+  await page.keyboard.press('KeyX'); await page.waitForTimeout(200);
+  const blade = await page.evaluate(() => __game.pBullets.map(b => [!!b.disc, !!b.pierce, +b.vy.toFixed(0)]));
+  await page.keyboard.press('KeyC'); await page.waitForTimeout(100);
+  const slide = await page.evaluate(() => __game.player.dashT > 0);
+  await page.click('#cfgBtn'); await page.selectOption('#o_hero', 'commando'); await page.click('#o_close');
+  const back = await page.evaluate(() => __game.player.gun);
+  console.log(JSON.stringify({ gun, tap, full, blade, slide, back, errs }));
+  const ok = gun === 'MB' && tap[0] === 1 && full.some(f => f[0] === 3 && f[1]) && blade[0] && blade[0][0] && blade[0][1] && slide && back === 'N' && !errs.length;
+  console.log(ok ? 'MEGA PASS' : 'MEGA FAIL'); await b.close(); process.exit(ok ? 0 : 1);
+})();

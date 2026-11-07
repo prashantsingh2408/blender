@@ -11,6 +11,18 @@
 
   /* ---------- orders (shared vocabulary) ---------- */
   var ORDERS = [
+    { id: 'teachend', re: /सिखाना (खत्म|ख़त्म|बंद|पूरा)|बस इतना|स्किल याद|याद रखो|skill done|stop teaching/ },
+    { id: 'teachstart', re: /सिखाना शुरू|सिखाओ|सिखाता हूँ|सिखाती हूँ|नई स्किल|स्किल सिखा|\bteach\b|सीखो/ },
+    { id: 'skills', re: /स्किल दिखा|स्किल्स|तुम्हें क्या आता|क्या क्या आता|what can you do|\bskills\b|स्किल बता/ },
+    { id: 'report', re: /क्या दिख|क्या है सामने|आगे क्या|रिपोर्ट|\bstatus\b|\breport\b|कितने दुश्मन|बताओ क्या|क्या हाल/ },
+    { id: 'gunmenu', re: /बंदूक बदल|गन बदल|हथियार बदल|हथियार दिखा|बंदूक दिखा|\bchange (the )?(gun|weapon)\b|\bweapons?\b|दूसरी बंदूक|कौन सी बंदूक/ },
+    { id: 'gunnext', re: /अगली बंदूक|अगला हथियार|next (gun|weapon)|बंदूक आगे/ },
+    { id: 'takeall', re: /कंट्रोल (लो|तुम|ले लो|संभालो|सँभालो)|सब तुम|तुम संभालो|तुम सँभालो|manage the control|take (the )?control|पूरा तुम/ },
+    { id: 'giveall', re: /कंट्रोल (मुझे|मेरा|दो|दे दो)|मैं संभालता|मैं सँभालता|मैं संभालूँ|हाथ हटाओ|\brelease\b|मुझे खेलने दो|छोड़ दो/ },
+    { id: 'justfire', re: /बस गोली|सिर्फ़ गोली|सिर्फ गोली|गोली तुम|तुम मारो|तुम गोली|शूटिंग तुम|(only|just) (shoot|fire)|you shoot|तुम शूट/ },
+    { id: 'ifire', re: /गोली मैं|मैं मारूँगा|मैं मारूंगा|मैं मारता|शूटिंग मेरी|मैं गोली|मैं शूट|i('ll| will)? shoot/ },
+    { id: 'youmove', re: /तुम चलो|चाल तुम|मूवमेंट तुम|तुम बढ़ो|चलना तुम|you (move|walk|run)/ },
+    { id: 'imove', re: /मैं चलता|मैं चलूँ|मैं चलूं|चाल मेरी|मैं चलाता|मैं चलाऊँ|चलना मेरा|i('ll| will)? (move|walk)|मैं खुद चल/ },
     { id: 'auto', re: /अपने आप|खुद खेलो|खुद से|autoplay|\bauto\b|play yourself|खेलते रहो|तुम खेलो/ },
     { id: 'dodge', re: /बचो|बचा|बच के|बचके|बच जा|बचना|गोली से|गोलियों|गोलियां|गोलियाँ|गोलिय|\bdodge\b|\bevade\b|\bavoid\b|\bbullets?\b|हटो|संभल/ },
     { id: 'fireon', re: /मारते रहो|गोली चलाते रहो|keep (firing|shooting)|लगातार/ },
@@ -28,20 +40,22 @@
     { id: 'cross', re: /पार कर|पार हो|क्रॉस|क्रास|\bcross\b|गड्ढा|गड्ढे|गड्डा|खाई|पानी के ऊपर|\bjump over\b|उस पार|छलांग लगा/ },
     { id: 'start', re: /शुरू|स्टार्ट|फिर से|दोबारा|\bstart\b|\bagain\b|\brestart\b/ }
   ];
-  function parse(t) { var l = String(t).toLowerCase(), out = []; for (var k in learned) { if (l.indexOf(k) >= 0 && learned[k] && learned[k].length) out = out.concat(learned[k]); } ORDERS.forEach(function (o) { if (o.re.test(l)) out.push(o.id); }); if (out.indexOf('fireon') >= 0 || out.indexOf('fireoff') >= 0) out = out.filter(function (x) { return x !== 'fire'; }); if (out.indexOf('dodge') >= 0) out = out.filter(function (x) { return x !== 'fire'; }); if (out.indexOf('cross') >= 0) out = out.filter(function (x) { return x !== 'jump' && x !== 'advance'; }); if (out.indexOf('hunt') >= 0) out = out.filter(function (x) { return x !== 'fire' && x !== 'fireon' && x !== 'advance' && x !== 'hold'; }); return out; }
+  function parse(t) { var l = String(t).toLowerCase(), out = []; for (var k in learned) { if (l.indexOf(k) >= 0 && learned[k] && learned[k].length) out = out.concat(learned[k]); } ORDERS.forEach(function (o) { if (o.re.test(l)) out.push(o.id); }); if (out.indexOf('fireon') >= 0 || out.indexOf('fireoff') >= 0) out = out.filter(function (x) { return x !== 'fire'; }); if (out.indexOf('dodge') >= 0) out = out.filter(function (x) { return x !== 'fire'; }); if (out.indexOf('cross') >= 0) out = out.filter(function (x) { return x !== 'jump' && x !== 'advance'; }); if (out.indexOf('hunt') >= 0) out = out.filter(function (x) { return x !== 'fire' && x !== 'fireon' && x !== 'advance' && x !== 'hold'; });
+    ['teachend', 'teachstart', 'skills', 'report', 'gunmenu', 'gunnext', 'takeall', 'giveall', 'justfire', 'ifire', 'youmove', 'imove'].forEach(function (k) { if (out.indexOf(k) >= 0) out = [k]; });
+    return out; }
 
   /* ---------- key helpers ---------- */
   function kev(type, key, code, kc) { return new KeyboardEvent(type, { key: key, code: code, keyCode: kc, which: kc, bubbles: true, cancelable: true }); }
   function tap(key, code, kc, ms) { window.dispatchEvent(kev('keydown', key, code, kc)); setTimeout(function () { window.dispatchEvent(kev('keyup', key, code, kc)); }, ms || 60); }
 
   /* ---------- shared agent state ---------- */
-  var A = { strategy: 'idle', fire: false, dodge: false, burst: 0, fails: 0, t: 0, defend: true };
+  var A = { strategy: 'idle', fire: false, dodge: false, burst: 0, fails: 0, t: 0, defend: true, roles: { move: true, fire: true, dodge: true }, target: '', skills: {}, teaching: null, pendingName: false };
   /* memory: words the player taught us ("<unknown phrase>" followed by a known order within 6 s) */
   var learned = {}; try { learned = JSON.parse(localStorage.getItem('agent_learned_' + GAME) || '{}') || {}; } catch (e) {}
   var pendingUnknown = null;
   function learn(phrase, ids) { phrase = String(phrase).toLowerCase().trim(); if (!phrase || phrase.length < 2 || phrase.length > 40) return; learned[phrase] = ids; try { localStorage.setItem('agent_learned_' + GAME, JSON.stringify(learned)); } catch (e) {} }
   /* the commando answers every order in his own voice */
-  var LINES = { advance: ['जी मालिक, आगे बढ़ता हूँ!', 'आगे चलो!'], retreat: ['पीछे हटता हूँ, मालिक।'], hold: ['रुक गया, मालिक।', 'मोर्चा संभाला।'], dodge: ['बचता हूँ!', 'सिर नीचे!'], fire: ['फायर!'], fireon: ['गोली चलाता रहूँगा!'], fireoff: ['गोली बंद, मालिक।'], jump: ['हुप!'], dash: ['भागो!'], prone: ['लेट गया।'], cross: ['गड्ढा पार करता हूँ, मालिक!'], hunt: ['निशाना लग गया!'], auto: ['मैं संभालता हूँ, मालिक!'], start: ['तैयार, मालिक!'], up: ['ऊपर!'], down: ['नीचे!'], left: ['बाएँ!'], right: ['दाएँ!'], unknown: ['समझा नहीं मालिक, फिर बोलो?', 'क्या करूँ मालिक?'], learned: ['समझ गया मालिक!'] };
+  var LINES = { advance: ['जी मालिक, आगे बढ़ता हूँ!', 'आगे चलो!', 'बढ़ रहा हूँ, मालिक।'], takeall: ['ठीक मालिक, पूरा मोर्चा मेरा।', 'कंट्रोल मेरे पास, आराम से बैठो।'], giveall: ['जी, कंट्रोल तुम्हारा। मैं साथ हूँ।'], justfire: ['तुम चलो, गोली मैं चलाऊँगा।'], ifire: ['ठीक, गोली तुम्हारी।'], youmove: ['चाल मेरी, मालिक।'], imove: ['ठीक, तुम चलाओ। मैं निशाना रखूँगा।'], gunnext: ['अगली बंदूक!'], teachstart: ['सिखाओ मालिक, मैं देख रहा हूँ।'], teachend: ['याद हो गया।'], report: [], skills: [], retreat: ['पीछे हटता हूँ, मालिक।'], hold: ['रुक गया, मालिक।', 'मोर्चा संभाला।'], dodge: ['बचता हूँ!', 'सिर नीचे!'], fire: ['फायर!'], fireon: ['गोली चलाता रहूँगा!'], fireoff: ['गोली बंद, मालिक।'], jump: ['हुप!'], dash: ['भागो!'], prone: ['लेट गया।'], cross: ['गड्ढा पार करता हूँ, मालिक!'], hunt: ['निशाना लग गया!'], auto: ['मैं संभालता हूँ, मालिक!'], start: ['तैयार, मालिक!'], up: ['ऊपर!'], down: ['नीचे!'], left: ['बाएँ!'], right: ['दाएँ!'], unknown: ['समझा नहीं मालिक, फिर बोलो?', 'क्या करूँ मालिक?'], learned: ['समझ गया मालिक!'] };
   var SOLDIER = { contra: true };
   function soldierSay(id) { if (!SOLDIER[GAME]) return; var L = LINES[id]; if (!L) return; var t = L[Math.floor(Math.random() * L.length)]; flash('🪖 ' + t); try { if (window.Talk && Talk.voiceOn === false) return; var u = new SpeechSynthesisUtterance(t); u.lang = 'hi-IN'; u.pitch = 0.7; u.rate = 1.05; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {} }
   var NAMES = { idle: 'खड़ा', advance: 'आगे बढ़ रहा', retreat: 'पीछे हट रहा', hold: 'रुका', auto: 'अपने आप खेल रहा', dodge: 'बच रहा', cross: 'गड्ढा पार कर रहा', hunt: 'निशाना लगा रहा' };
@@ -53,24 +67,24 @@
   /* ---- Jungle Commando ---- */
   DRIVERS.contra = (function () {
     var g = function () { return window.__game; }, lastX = 0, stuckT = 0, fireT = 0, lastJump = 0, proneT = 0, lastLives = null, dodgeHits = 0, move = 0, lastLivesCross = null;
-    function setMove(dir) { var k = g().keys; if (move !== dir) { k.left = dir < 0; k.right = dir > 0; move = dir; } }
-    function jump() { if (Date.now() - lastJump < 260) return; lastJump = Date.now(); tap('z', 'KeyZ', 90, 90); }
-    function fire() { tap('x', 'KeyX', 88, 70); }
-    function prone(ms) { var k = g().keys; k.down = true; proneT = ms; }
+    function setMove(dir) { if (!A.roles.move) { move = 0; return; } var k = g().keys; if (move !== dir) { k.left = dir < 0; k.right = dir > 0; move = dir; } }
+    function jump() { if (!A.roles.move && !A.roles.dodge) return; if (Date.now() - lastJump < 260) return; lastJump = Date.now(); tap('z', 'KeyZ', 90, 90); }
+    function fire() { if (!A.roles.fire) return; tap('x', 'KeyX', 88, 70); }
+    function prone(ms) { if (!A.roles.move && !A.roles.dodge) return; var k = g().keys; k.down = true; proneT = ms; }
     function enemiesNear(p, dir, range) { return (g().enemies || []).filter(function (e) { if (e.dead || e.hp <= 0) return false; var dx = e.x - p.x; if (Math.abs(dx) > range || Math.abs((e.y || 0) - p.y) > 90) return false; return dir === 0 || dx * dir > 0; }); }
     /* threat = enemy bullet that will cross the player's body within ~0.5 s */
     function threats(p) { var B = g().eBullets || [], out = []; for (var i = 0; i < B.length; i++) { var b = B[i]; if (b.dead) continue; var dx = p.x - b.x; if (!b.vx || dx * b.vx <= 0) continue; var t = dx / b.vx; if (t < 0 || t > 0.6) continue; var yAt = b.y + (b.vy || 0) * t; var top = p.y - 28, bot = p.y + 2; if (yAt < top - 6 || yAt > bot + 6) continue; out.push({ b: b, t: t, yAt: yAt, high: yAt < p.y - 12 }); } out.sort(function (u, v) { return u.t - v.t; }); return out; }
     var wantJump = false;
     return {
       ready: function () { var G = g(); return G && G.G && G.G.state === 'play' && G.player && !G.player.dead; },
-      release: function () { var G = g(); if (!G) return; setMove(0); G.keys.down = false; G.aim = null; },
+      release: function () { var G = g(); if (!G) return; var k = G.keys; k.left = false; k.right = false; move = 0; G.keys.down = false; G.aim = null; },
       tick: function (dt) {
         var G = g(), p = G.player, s = A.strategy;
         var huntDir = 0;
         if (s === 'hunt' && A.hunt) { var Hn = A.hunt; Hn.t += dt; if (!Hn.e || Hn.e.dead || Hn.e.hp <= 0) { Hn.e = null; var bd = 1e9; (G.enemies || []).forEach(function (e) { if (e.dead || e.hp <= 0) return; var ok = Hn.type.indexOf(e.t) >= 0 || (Hn.type[0] === 'boss' && e.boss); if (!ok) return; var d = Math.abs(e.x - p.x); if (d < bd) { bd = d; Hn.e = e; } }); if (!Hn.e) { if (Hn.t > 1.5) { G.aim = null; A.hunt = null; say(Hn.killed ? 'ख़त्म!' : 'दिखा नहीं।'); A.strategy = 'hold'; hud(); return; } } else if (Hn.t > 1.5 && !Hn.killed) Hn.killed = false; }
           if (Hn.e) { var ex = Hn.e.x, ey = Hn.e.y - (Hn.e.h || 20) / 2, ddx = ex - p.x, ddy = ey - (p.y - 14), dist = Math.abs(ddx);
             huntDir = dist > 230 ? Math.sign(ddx) : 0; if (p.dir !== Math.sign(ddx) && dist <= 230) { setMove(Math.sign(ddx)); A.t = 0.04; }
-            G.aim = Math.atan2(ddy, ddx);
+            if (A.roles.fire) G.aim = Math.atan2(ddy, ddx);
             if (dist <= 300 && Math.abs(ddy) < 140) { fireT += dt; if (fireT > 0.13) { fire(); fireT = 0; } }
             if (ey < p.y - 40 && dist < 60 && p.onGround) jump();
             Hn.killed = true; } }
@@ -79,7 +93,7 @@
         /* auto-defence: while advancing / crossing / holding, shoot the nearest enemy in front (aimed, incl. ledges) unless told गोली बंद */
         var defTgt = null;
         if (A.defend && s !== 'hunt' && s !== 'auto' && (dir !== 0 || s === 'hold' || s === 'cross' || A.dodge)) { var bdd = 270; (G.enemies || []).forEach(function (e) { if (e.dead || e.hp <= 0 || e.t === 'cap' || e.t === 'core') return; var ddx = e.x - p.x; if (dir !== 0 && ddx * dir < 0) return; if (s === 'cross' && ddx < 0) return; var d = Math.abs(ddx); if (d < bdd && Math.abs(e.y - p.y) < 130) { bdd = d; defTgt = e; } });
-          if (defTgt) { G.aim = Math.atan2((defTgt.y - (defTgt.h || 20) / 2) - (p.y - 14), defTgt.x - p.x); if (dir === 0 && p.dir !== Math.sign(defTgt.x - p.x)) { setMove(Math.sign(defTgt.x - p.x)); A.t = 0.04; } if (!(s === 'cross' && nearEdge && A.cross && A.cross.phase === 'run')) { fireT += dt; if (fireT > 0.15) { fire(); fireT = 0; } } } else if (s !== 'hunt' && G.aim != null) G.aim = null; }
+          if (defTgt && A.roles.fire) { G.aim = Math.atan2((defTgt.y - (defTgt.h || 20) / 2) - (p.y - 14), defTgt.x - p.x); if (dir === 0 && p.dir !== Math.sign(defTgt.x - p.x)) { setMove(Math.sign(defTgt.x - p.x)); A.t = 0.04; } if (!(s === 'cross' && nearEdge && A.cross && A.cross.phase === 'run')) { fireT += dt; if (fireT > 0.15) { fire(); fireT = 0; } } } else if (s !== 'hunt' && G.aim != null) G.aim = null; }
         var SF = G.surfaces || [], on = null; for (var i = 0; i < SF.length; i++) { var sf = SF[i]; if (p.x >= sf.x1 - 2 && p.x <= sf.x2 + 2 && Math.abs(sf.y - p.y) < 2) { on = sf; break; } }
         var toEdge = on ? (dir >= 0 ? on.x2 - p.x : p.x - on.x1) : 999, nearEdge = toEdge < 60;
         if (proneT > 0) { proneT -= dt; if (proneT <= 0 || nearEdge) { G.keys.down = false; proneT = 0; } }
@@ -184,13 +198,46 @@
   var last = performance.now();
   setInterval(function () { var now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; try { if (!D.ready()) return; D.tick(dt); } catch (e) {} }, 33);
 
-  function rawHook(t) { try { if (D.raw) return !!D.raw(t); return !!(window.GameVoice && window.GameVoice(t)); } catch (e) { return false; } }
+  function rawHook(t) { try { if (extraHook(t)) return true; if (D.raw) return !!D.raw(t); return !!(window.GameVoice && window.GameVoice(t)); } catch (e) { return false; } }
+  /* ===== commando extras: weapons, roles, report, skills ===== */
+  var TEACHABLE = ['advance', 'retreat', 'hold', 'jump', 'dash', 'prone', 'fire', 'fireon', 'fireoff', 'dodge', 'cross', 'hunt', 'up', 'down', 'left', 'right'];
+  var SKILLS_DB = {}; try { SKILLS_DB = JSON.parse(localStorage.getItem('agent_skills_' + GAME) || '{}') || {}; } catch (e) {}
+  var USES = {}; try { USES = JSON.parse(localStorage.getItem('agent_uses_' + GAME) || '{}') || {}; } catch (e) {}
+  var SKILL_HI = { advance: 'आगे बढ़ना', retreat: 'पीछे हटना', hold: 'मोर्चा', jump: 'कूदना', dash: 'डैश', prone: 'लेटना', fire: 'गोली', dodge: 'गोली से बचना', cross: 'गड्ढा पार', hunt: 'निशाना', auto: 'अकेले खेलना', gunmenu: 'हथियार बदलना' };
+  function bumpSkill(id) { if (!SKILL_HI[id]) return; USES[id] = (USES[id] || 0) + 1; try { localStorage.setItem('agent_uses_' + GAME, JSON.stringify(USES)); } catch (e) {} }
+  function level(id) { return Math.min(9, 1 + Math.floor((USES[id] || 0) / 4)); }
+  function saveSkills() { try { localStorage.setItem('agent_skills_' + GAME, JSON.stringify(SKILLS_DB)); } catch (e) {} }
+  function nameFrom(t) { var m = String(t).match(/नाम\s+(?:है\s+|रखो\s+|रख\s+|दो\s+)?([^,.।]+?)(?:\s+(?:रखो|रख दो|है|रहेगा|करो))?\s*$/) || String(t).match(/\bname\s+(?:it\s+)?([^,.]+)$/i); return m ? m[1].trim().replace(/^(इसका|इसे|skill|स्किल)\s+/, '').trim() : ''; }
+  function finishTeaching(nm) { var st = A.teaching ? A.teaching.steps : []; A.teaching = null; A.pendingName = false; if (!st.length) { say('कुछ सिखाया ही नहीं, मालिक।'); return; } var seq = [], t0 = st[0].at; st.forEach(function (x, i) { seq.push({ id: x.id, text: x.text, delay: i === 0 ? 0 : Math.min(1500, x.at - st[i - 1].at) }); }); SKILLS_DB[nm.toLowerCase()] = seq; saveSkills(); say('सीख गया: "' + nm + '" = ' + seq.map(function (x) { return SKILL_HI[x.id] || x.id; }).join(', ')); hud(); }
+  function runSkill(nm) { var seq = SKILLS_DB[nm]; if (!seq) return false; var t = 0; seq.forEach(function (x) { t += x.delay; setTimeout(function () { order([x.id], x.text); }, t); }); say('"' + nm + '" कर रहा हूँ!'); return true; }
+  var GUN_ALIAS = { N: ['राइफल', 'rifle'], S: ['स्प्रेड', 'spread'], M: ['मशीन', 'machine', 'एम गन', 'एमजी'], L: ['लेज़र', 'लेजर', 'laser'], F: ['फ्लेम', 'आग वाली', 'flame', 'फ्लेमथ्रोअर'], K: ['शॉटगन', 'शोटगन', 'shotgun'], R: ['रॉकेट', 'राकेट', 'rocket'], G: ['मोर्टार', 'mortar'], H: ['ग्रेनेड', 'grenade', 'बम'], MB: ['बस्टर', 'buster', 'मेगा', 'mega'], MT: ['ब्लेड', 'blade', 'आरी'] };
+  var gunMenuUntil = 0, menuEl = null;
+  function gunList() { var W = window.__game; if (!W || !W.WEAPONS) return []; var set = (W.curSet && W.curSet.length ? W.curSet : Object.keys(W.WEAPONS)); return set.map(function (k) { return { k: k, name: W.WEAPONS[k] ? W.WEAPONS[k].name : k }; }); }
+  function findGun(t) { var l = String(t).toLowerCase(), W = window.__game; if (!W || !W.WEAPONS) return null; var keys = Object.keys(W.WEAPONS), hit = null; keys.forEach(function (k) { var names = (GUN_ALIAS[k] || []).concat([String(W.WEAPONS[k].name || '').toLowerCase()]); if (names.some(function (n) { return n && l.indexOf(n) >= 0; })) hit = hit || k; }); var m = l.match(/(?:बंदूक|गन|हथियार|gun|weapon|नंबर)\s*(\d)/) || l.match(/^\s*(\d)\s*$/); if (!hit && m) { var list = gunList(); var i = parseInt(m[1], 10) - 1; if (list[i]) hit = list[i].k; } return hit; }
+  function showGuns() { var list = gunList(); if (!list.length) return; gunMenuUntil = Date.now() + 8000; if (!menuEl) { menuEl = document.createElement('div'); menuEl.className = 'ag-menu'; document.body.appendChild(menuEl); } menuEl.innerHTML = ''; var h = document.createElement('div'); h.textContent = 'कौन-सी बंदूक? नाम बोलो'; h.style.cssText = 'font-weight:800;color:#fbbf24;margin-bottom:4px'; menuEl.appendChild(h); list.forEach(function (gn, i) { var d = document.createElement('div'); d.textContent = (i + 1) + '. ' + gn.name + (GUN_ALIAS[gn.k] ? ' · ' + GUN_ALIAS[gn.k][0] : ''); if (window.__game.player && window.__game.player.gun === gn.k) d.style.color = '#4ade80'; menuEl.appendChild(d); }); menuEl.classList.add('on'); setTimeout(function () { if (Date.now() >= gunMenuUntil) menuEl.classList.remove('on'); }, 8100); say('कौन-सी बंदूक, मालिक? ' + list.slice(0, 4).map(function (x) { return GUN_ALIAS[x.k] ? GUN_ALIAS[x.k][0] : x.name; }).join(', ') + '…'); }
+  function extraHook(t) {
+    var l = String(t).toLowerCase().trim(); if (!l) return false;
+    if (A.pendingName) { var nm = nameFrom(l) || l.replace(/^(नाम|इसका नाम|name)\s*/, '').trim(); if (nm) { finishTeaching(nm); return true; } }
+    for (var k in SKILLS_DB) { if (l.indexOf(k) >= 0) { return runSkill(k); } }
+    var g = findGun(l); if (g && (Date.now() < gunMenuUntil || /बंदूक|गन|हथियार|gun|weapon|लो|दो|चुनो|लगाओ|निकालो|दे/.test(l))) { var W = window.__game; if (W && W.setGun && W.setGun(g)) { gunMenuUntil = 0; if (menuEl) menuEl.classList.remove('on'); var name = W.WEAPONS[g].name; say((GUN_ALIAS[g] ? GUN_ALIAS[g][0] : name) + ' लोड, मालिक!'); flash('🔫 ' + name); bumpSkill('gunmenu'); hud(); return true; } }
+    return false;
+  }
+  function describe() { var W = window.__game; if (!W || !W.player) return 'अभी खेल शुरू नहीं हुआ, मालिक।'; var p = W.player, ahead = {}, n = 0; (W.enemies || []).forEach(function (e) { if (e.dead || e.hp <= 0 || e.t === 'cap' || e.t === 'core') return; var dx = e.x - p.x; if (dx > -40 && dx < 420) { var nm = { rifle: 'सिपाही', runner: 'दौड़ता सिपाही', turret: 'टावर', cannon: 'तोप', tank: 'टैंक', chopper: 'हेलीकॉप्टर', head: 'बॉस', boss: 'बॉस' }[e.t] || e.t; ahead[nm] = (ahead[nm] || 0) + 1; n++; } }); var parts = []; for (var k in ahead) parts.push(ahead[k] + ' ' + k); var SF = W.surfaces || [], on = null; for (var i = 0; i < SF.length; i++) { var sf = SF[i]; if (p.x >= sf.x1 - 2 && p.x <= sf.x2 + 2 && Math.abs(sf.y - p.y) < 2) { on = sf; break; } } var gap = on ? Math.round(on.x2 - p.x) : -1; var txt = (n ? 'सामने ' + parts.join(', ') + '।' : 'सामने कोई दुश्मन नहीं।') + (gap >= 0 && gap < 160 ? ' ' + gap + ' कदम पर गड्ढा।' : '') + ' जान ' + (W.G.lives === Infinity ? 'अनगिनत' : W.G.lives) + '। हुक्म?'; return txt; }
+  function report() { var t = describe(); say(t); flash('🪖 ' + t); }
+  function showSkills() { var built = ['advance', 'jump', 'dodge', 'cross', 'hunt', 'fire', 'gunmenu', 'auto'].map(function (id) { return SKILL_HI[id] + ' Lv' + level(id); }); var custom = Object.keys(SKILLS_DB); var t = 'मुझे आता है: ' + built.join(', ') + (custom.length ? '। सिखाई हुई: ' + custom.join(', ') : '') + '।'; say(t); flash('🧠 ' + t); }
+  var QUIPS = { kill3: ['तीन गिरे, मालिक। चाय का समय?', 'हैट्रिक! अब बोनस दो।'], death: ['उफ़, ये ज़ोर की लगी। फिर से!', 'मालिक, थोड़ा और ध्यान… मेरा नहीं, तुम्हारा।'], idle: ['मालिक, मैं यहीं खड़ा हूँ। कुछ करूँ?', 'हुक्म दो मालिक, मच्छर काट रहे हैं।'] };
+  function quip(k) { var L = QUIPS[k]; if (!L || Math.random() < 0.4) return; var t = L[Math.floor(Math.random() * L.length)]; flash('🪖 ' + t); try { if (window.Talk && Talk.voiceOn === false) return; var u = new SpeechSynthesisUtterance(t); u.lang = 'hi-IN'; u.pitch = 0.7; speechSynthesis.speak(u); } catch (e) {} }
+  var lastScoreQ = 0, streak = 0, lastLivesQ = null, idleT = 0;
+  setInterval(function () { var W = window.__game; if (!W || !W.G || !on) return; if (W.G.state !== 'play') return; if (W.G.score > lastScoreQ) { streak++; if (streak === 3) { quip('kill3'); streak = 0; } } lastScoreQ = W.G.score; if (lastLivesQ !== null && W.G.lives < lastLivesQ) { quip('death'); streak = 0; } lastLivesQ = W.G.lives; idleT = (A.strategy === 'idle' && !A.fire) ? idleT + 1 : 0; if (idleT === 25) { quip('idle'); idleT = -60; } }, 1000);
+  /* the player touching the movement side of the screen takes the wheel back */
+  document.addEventListener('pointerdown', function (e) { if (!on || !A.roles.move) return; if (e.target && e.target.closest && e.target.closest('.tk-dock,.ag-hud,.ag-fl,.ag-menu,button,a')) return; if (e.clientX < innerWidth * 0.5 && ['advance', 'retreat', 'cross', 'auto', 'hunt'].indexOf(A.strategy) >= 0) { A.roles.move = false; try { D.release(); } catch (x) {} say('ठीक, चाल तुम्हारी।'); hud(); } }, true);
   function huntType(t) { t = String(t).toLowerCase(); if (/टैंक|टैक|टाइम|\btank\b/.test(t)) return ['tank']; if (/टावर|तोप|turret|cannon|मशीन/.test(t)) return ['turret', 'cannon']; if (/हेलीकॉप्टर|हेलिकॉप्टर|chopper|helicopter|हेली/.test(t)) return ['chopper']; if (/सिपाही|सैनिक|soldier|आदमी|दुश्मन/.test(t)) return ['rifle', 'runner']; if (/बॉस|\bboss\b/.test(t)) return ['boss']; return null; }
   function order(ids, text) {
     if (rawHook(text)) { hud(); return true; }
     if (!ids.length) return false;
     if (pendingUnknown && Date.now() - pendingUnknown.t < 6000) { learn(pendingUnknown.text, ids.slice()); soldierSay('learned'); } pendingUnknown = null;
     var first = ids.filter(function (x) { return LINES[x]; })[0]; if (first) setTimeout(function () { soldierSay(first); }, 60);
+    ids.forEach(function (x) { if (A.teaching && TEACHABLE.indexOf(x) >= 0) A.teaching.steps.push({ id: x, text: text, at: Date.now() }); bumpSkill(x); });
     ids.forEach(function (id) {
       if (D.order(id)) return;
       if (id === 'auto') { A.strategy = 'auto'; A.fire = true; A.dodge = true; }
@@ -199,6 +246,18 @@
       else if (id === 'fireoff') { A.fire = false; A.burst = 0; A.defend = false; }
       else if (id === 'fire') { A.burst = 4; }
       else if (id === 'advance' || id === 'retreat' || id === 'hold') { A.strategy = id; if (id === 'hold') A.burst = 0; }
+      else if (id === 'takeall') { A.roles.move = A.roles.fire = A.roles.dodge = true; A.strategy = 'auto'; A.fire = true; A.dodge = true; }
+      else if (id === 'giveall') { A.roles.move = false; A.roles.fire = false; A.strategy = 'idle'; A.fire = false; A.burst = 0; try { D.release(); } catch (x) {} }
+      else if (id === 'justfire') { A.roles.fire = true; A.roles.move = false; A.fire = true; A.defend = true; if (A.strategy === 'idle') A.strategy = 'hold'; try { D.release(); } catch (x) {} }
+      else if (id === 'ifire') { A.roles.fire = false; A.fire = false; A.burst = 0; A.defend = false; if (window.__game) window.__game.aim = null; }
+      else if (id === 'youmove') { A.roles.move = true; A.strategy = 'advance'; }
+      else if (id === 'imove') { A.roles.move = false; try { D.release(); } catch (x) {} }
+      else if (id === 'gunmenu') { showGuns(); }
+      else if (id === 'gunnext') { tap('q', 'KeyQ', 81, 60); setTimeout(function () { soldierSay('gunnext'); }, 300); }
+      else if (id === 'report') { report(); }
+      else if (id === 'skills') { showSkills(); }
+      else if (id === 'teachstart') { A.teaching = { steps: [], t: Date.now() }; }
+      else if (id === 'teachend') { var nm = nameFrom(text); if (A.teaching) { if (nm) finishTeaching(nm); else { A.pendingName = true; say('इस स्किल का नाम क्या रखूँ?'); } } }
       else if (id === 'hunt') { var ty = huntType(text); A.hunt = { type: ty, t: 0, e: null }; A.strategy = 'hunt'; say(ty ? 'जी!' : 'किस पर?'); if (!ty) A.strategy = 'hold'; }
       else if (id === 'cross') { A.strategy = 'cross'; A.cross = { x0: null, t: 0, phase: 'clear', ct: 0 }; say('जी!'); }
       else if (id === 'start') { if (A.strategy === 'idle') A.strategy = 'advance'; }
@@ -244,14 +303,15 @@
   var css = document.createElement('style');
   css.textContent = '.ag-btn.solo{position:fixed;left:12px;top:calc(50% - 100px);z-index:9001;border:0;border-radius:14px;background:#1e293b;color:#f8fafc;font:800 12px system-ui,"Noto Sans Devanagari",sans-serif;padding:8px 12px;cursor:pointer}' +
     '.ag-hud{position:fixed;left:50%;top:calc(max(6px,env(safe-area-inset-top)) + 58px);transform:translateX(-50%);z-index:9001;background:rgba(15,23,42,.9);color:#fff;border-radius:12px;padding:6px 14px;font:700 13px system-ui,"Noto Sans Devanagari",sans-serif;display:none;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}.ag-hud.on{display:block}.ag-hud b{color:#fbbf24}' +
+    '.ag-menu{position:fixed;left:50%;top:calc(max(6px,env(safe-area-inset-top)) + 150px);transform:translateX(-50%);z-index:9001;background:rgba(15,23,42,.94);color:#fff;border-radius:12px;padding:10px 16px;font:700 14px/1.5 system-ui,"Noto Sans Devanagari",sans-serif;display:none;max-width:90vw}.ag-menu.on{display:block}' +
     '.ag-fl{position:fixed;left:50%;top:calc(max(6px,env(safe-area-inset-top)) + 118px);transform:translateX(-50%);z-index:9001;background:#fbbf24;color:#0f172a;border-radius:10px;padding:5px 12px;font:800 13px system-ui,"Noto Sans Devanagari",sans-serif;display:none;max-width:90vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ag-fl.on{display:block}';
   document.head.appendChild(css);
   var btn = document.createElement('button'); btn.className = 'tk-btn ag-btn'; btn.setAttribute('aria-label', 'वॉइस कंट्रोल चालू/बंद'); btn.innerHTML = '<i>🎧</i><span>कंट्रोल</span>';
   var hudEl = document.createElement('div'); hudEl.className = 'ag-hud';
   var fl = document.createElement('div'); fl.className = 'ag-fl'; var flT = null;
   function flash(t) { fl.textContent = t; fl.classList.add('on'); clearTimeout(flT); flT = setTimeout(function () { fl.classList.remove('on'); }, 1400); }
-  function hud() { hudEl.innerHTML = ''; var a = document.createElement('span'); a.textContent = (on ? '🎧 ' : '') + 'एजेंट: '; var b = document.createElement('b'); var tags = [NAMES[A.strategy] || A.strategy]; if (A.dodge && A.strategy !== 'auto') tags.push('बच रहा'); if (A.fire && A.strategy !== 'auto') tags.push('मार रहा'); b.textContent = tags.join(' · '); hudEl.appendChild(a); hudEl.appendChild(b); hudEl.classList.toggle('on', on || A.strategy !== 'idle' || A.dodge || A.fire); document.body.classList.toggle('ag-on', hudEl.classList.contains('on')); btn.children[1].textContent = on ? 'सुन रहा' : 'कंट्रोल'; }
-  var HELP = { contra: 'आगे बढ़ो · कूदो · मारो · बचो · गड्ढा पार करो · निशाना टैंक पे · रुको · अपने आप खेलो', car: 'आगे बढ़ो (गैस) · रुको (ब्रेक) · अपने आप खेलो', iso: 'ऊपर/नीचे/बाएँ/दाएँ · अपने आप खेलो', arena: 'आगे/पीछे · उड़ो · मारो · बचो · अपने आप खेलो', fort: 'तीन सैनिक ऊपर · तीरंदाज़ भेजो · टावर बनाओ · हमला', mantra: 'असुर पर लिखा मंत्र बोलो · ढाल · शांति · जीवन' };
+  function hud() { hudEl.innerHTML = ''; var a = document.createElement('span'); a.textContent = (on ? '🎧 ' : '') + (SOLDIER[GAME] ? '🪖 ' : 'एजेंट: '); var b = document.createElement('b'); var tags = [NAMES[A.strategy] || A.strategy]; if (A.strategy === 'hunt' && A.hunt && A.hunt.e) tags[0] = '🎯 ' + ({ rifle: 'सिपाही', runner: 'सिपाही', turret: 'टावर', cannon: 'तोप', tank: 'टैंक', chopper: 'हेलीकॉप्टर' }[A.hunt.e.t] || A.hunt.e.t) + ' पर निशाना'; if (A.strategy === 'cross' && A.cross) tags[0] = A.cross.phase === 'clear' ? 'रास्ता साफ़ कर रहा' : 'गड्ढा पार कर रहा'; if (A.dodge && A.strategy !== 'auto') tags.push('🛡 बच रहा'); if (A.fire && A.strategy !== 'auto') tags.push('🔫 मार रहा'); if (A.teaching) tags.push('📝 सीख रहा (' + A.teaching.steps.length + ')'); if (SOLDIER[GAME]) tags.push('चाल: ' + (A.roles.move ? 'मैं' : 'तुम') + ' · गोली: ' + (A.roles.fire ? 'मैं' : 'तुम')); b.textContent = tags.join(' · '); hudEl.appendChild(a); hudEl.appendChild(b); hudEl.classList.toggle('on', on || A.strategy !== 'idle' || A.dodge || A.fire || !!A.teaching); document.body.classList.toggle('ag-on', hudEl.classList.contains('on')); btn.children[1].textContent = on ? 'सुन रहा' : 'कंट्रोल'; }
+  var HELP = { contra: 'आगे बढ़ो · कूदो · मारो · बचो · गड्ढा पार करो · निशाना टैंक पे · बंदूक बदलो · तुम संभालो / मैं चलता हूँ · सिखाना शुरू', car: 'आगे बढ़ो (गैस) · रुको (ब्रेक) · अपने आप खेलो', iso: 'ऊपर/नीचे/बाएँ/दाएँ · अपने आप खेलो', arena: 'आगे/पीछे · उड़ो · मारो · बचो · अपने आप खेलो', fort: 'तीन सैनिक ऊपर · तीरंदाज़ भेजो · टावर बनाओ · हमला', mantra: 'असुर पर लिखा मंत्र बोलो · ढाल · शांति · जीवन' };
   btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
   btn.addEventListener('touchstart', function (e) { e.stopPropagation(); }, { passive: true });
   btn.addEventListener('click', function (e) { e.stopPropagation(); on = !on; btn.classList.toggle('on', on); if (on) { if (!SR) { flash('यहाँ बोलकर खेलना संभव नहीं (Chrome में खोलो)'); on = false; btn.classList.remove('on'); hud(); return; } startRec(); flash('बोलो: ' + (HELP[GAME] || HELP.contra)); if (window.Talk && Talk.setEnabled && Talk.enabled && !Talk.userSet) { Talk.setEnabled(false, true); setTimeout(function () { flash('किरदार चुप — 🗣 बटन से चालू करो'); }, 1500); } } else { stopRec(); A.strategy = 'idle'; A.fire = false; A.dodge = false; try { D.release(); } catch (x) {} } hud(); });
@@ -259,5 +319,5 @@
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
   function listen(v) { if (v === on) return; btn.click(); }
-  window.Agent = { listen: listen, order: function (t) { return order(parse(t), t); }, parse: parse, state: A, get strategy() { return A.strategy; }, set strategy(s) { A.strategy = s; hud(); }, get listening() { return on; }, handle: handle, game: GAME };
+  window.Agent = { listen: listen, skills: SKILLS_DB, uses: USES, describe: describe, guns: gunList, findGun: findGun, order: function (t) { return order(parse(t), t); }, parse: parse, state: A, get strategy() { return A.strategy; }, set strategy(s) { A.strategy = s; hud(); }, get listening() { return on; }, handle: handle, game: GAME };
 })();
