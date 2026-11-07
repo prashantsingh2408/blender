@@ -136,9 +136,30 @@
     r.onend = function () { clearTimeout(wd); setMic(false); rec = null; var t = got; got = ''; heardShow(''); if (t) heard(t); };
     try { r.start(); } catch (e) { setMic(false); }
   }
+  /* ---------- voice command mechanism: Hindi/English words -> the game's own keys ----------
+     Games read keyboard input (e.code or e.key), so a spoken command is turned into a synthetic
+     key press: movement words are held for a moment, actions are tapped. Works in any game
+     that uses these keys; nothing in the game changes.                                        */
+  var VOICE = [
+    { re: /\b(start|go|again|restart)\b|फिर से|दोबारा|शुरू|चालू|स्टार्ट|खेलो/, key: 'Enter', code: 'Enter', kc: 13, hold: 0, hi: 'शुरू' },
+    { re: /\bright\b|आगे|दाएँ|दाएं|दायें|राइट/, key: 'ArrowRight', code: 'ArrowRight', kc: 39, hold: 900, hi: 'आगे' },
+    { re: /\bleft\b|\bback\b|पीछे|बाएँ|बाएं|बायें|लेफ्ट|लेफ़्ट/, key: 'ArrowLeft', code: 'ArrowLeft', kc: 37, hold: 900, hi: 'पीछे' },
+    { re: /\bjump\b|कूदो|कूद|जंप|छलांग/, key: ' ', code: 'Space', kc: 32, hold: 120, hi: 'कूदो' },
+    { re: /\b(up|gas|fast|faster)\b|ऊपर|तेज़|तेज|गैस|भगाओ|दौड़ो/, key: 'ArrowUp', code: 'ArrowUp', kc: 38, hold: 1200, hi: 'तेज़' },
+    { re: /\b(down|brake|slow)\b|नीचे|ब्रेक|धीरे|बैठो/, key: 'ArrowDown', code: 'ArrowDown', kc: 40, hold: 700, hi: 'ब्रेक' },
+    { re: /\b(fire|shoot)\b|गोली|फायर|मारो|शूट|चलाओ/, key: 'x', code: 'KeyX', kc: 88, hold: 450, hi: 'फायर' },
+    { re: /\bstop\b|रुको|रुक|बस करो/, key: null, hi: 'रुको' }
+  ];
+  var held = [];
+  function kev(type, c) { return new KeyboardEvent(type, { key: c.key, code: c.code, keyCode: c.kc, which: c.kc, bubbles: true, cancelable: true }); }
+  function press(c) { var d = kev('keydown', c); window.dispatchEvent(d); document.dispatchEvent(d); var up = function () { var u = kev('keyup', c); window.dispatchEvent(u); document.dispatchEvent(u); }; if (c.hold) { var h = setTimeout(up, c.hold); held.push({ up: up, h: h }); } else up(); }
+  function release() { held.forEach(function (x) { clearTimeout(x.h); x.up(); }); held = []; }
+  function voiceCmd(l) { var hit = []; VOICE.forEach(function (c) { if (c.re.test(l)) { hit.push(c.hi); if (c.key === null) release(); else press(c); } }); return hit; }
+
   function heard(t) {
     var l = t.toLowerCase();
-    if (/start|go|again|फिर|दोबारा|शुरू|चलो|स्टार्ट|खेलो/.test(l)) { var ev = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }); window.dispatchEvent(ev); document.dispatchEvent(ev); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true })); }
+    var cmds = voiceCmd(l);
+    if (cmds.length) { heardShow('⌨ ' + cmds.join(' + ')); setTimeout(function () { heardShow(''); }, 1500); if (!/\s/.test(t.trim()) || cmds.length >= 2) { say('तुम', t, false); return; } }
     say('तुम', t, false);
     var k = classify(t);
     var R = C.reply || REPLY;
@@ -162,5 +183,5 @@
   };
   var watch = W[GAME]; if (watch) setInterval(function () { try { watch.call(watch); } catch (e) {} }, 150);
 
-  window.Talk = { say: function (t) { say(C.name, t, true); }, event: function (ev) { line(ev, true); }, get mood() { return mood; }, get psych() { return psych; }, character: C, player: PID, players: PLAYERS, heard: heard };
+  window.Talk = { say: function (t) { say(C.name, t, true); }, event: function (ev) { line(ev, true); }, get mood() { return mood; }, get psych() { return psych; }, character: C, player: PID, players: PLAYERS, heard: heard, command: voiceCmd, commands: VOICE };
 })();
